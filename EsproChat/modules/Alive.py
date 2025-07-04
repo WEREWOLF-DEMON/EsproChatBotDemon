@@ -2,7 +2,7 @@ from EsproChat import app
 from pyrogram import client, filters 
 import requests
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from EsproChat.modules.Ping import get_readable_time
+from EsproChat.EModules.Ping import get_readable_time
 import time
 
 _boot_ = time.time()
