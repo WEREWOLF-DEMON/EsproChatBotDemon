@@ -2,7 +2,7 @@ import time, re
 from pyrogram.enums import MessageEntityType
 from pyrogram import filters
 from pyrogram.types import Message
-from EsproChat import app as app
+from EsproChat import app
 from EsproChat.Db.Afkdb import add_afk, is_afk, remove_afk
 
 BOT_USERNAME = app.username
