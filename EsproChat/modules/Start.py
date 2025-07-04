@@ -7,7 +7,7 @@ from pyrogram.enums import ChatType
 import random 
 from config import OWNER_ID, LOGGER_ID
 import asyncio
-from EsproChat.Strings import HELP_BUTTON, START_TEXT, START_BUTTON
+from EsproChat.utilss import HELP_BUTTON, START_TEXT, START_BUTTON
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
 EMOJIOS = [
