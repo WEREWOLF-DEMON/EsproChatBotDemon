@@ -26,10 +26,10 @@ logging.getLogger("pymongo").setLevel(logging.ERROR)
 
 # Hehehe
 
-class ChikuBot(Client):
+class appBot(Client):
     def __init__(self):
         super().__init__(
-            name="Chikubot",
+            name="appbot",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             lang_code="en",
@@ -56,7 +56,7 @@ class ChikuBot(Client):
             
 
 
-app = ChikuBot()
+app = appBot()
 
 
 

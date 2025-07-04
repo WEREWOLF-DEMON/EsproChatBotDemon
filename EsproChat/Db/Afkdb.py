@@ -2,7 +2,7 @@ from config import MONGO_URL
 from motor.motor_asyncio import AsyncIOMotorClient
 
 mongo = AsyncIOMotorClient(MONGO_URL)
-db = mongo.CHIKUBOTDATABASEAFK
+db = mongo.appBOTDATABASEAFK
 afkdb = db.afk
 
 async def is_afk(user_id: int) -> bool:

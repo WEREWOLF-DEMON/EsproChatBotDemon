@@ -1,7 +1,7 @@
 {
   "name": "𝐂𝐡𝐢𝐤𝐮 𝐂𝐡𝐚𝐭 𝐁𝐨𝐭",
   "description": "Telegram Bot using Pyrogram",
-  "repository": "https://github.com/EsproSupport/ChikuBot",
+  "repository": "https://github.com/EsproSupport/appBot",
   "env": {
     "API_ID": {
       "description": "Your Telegram API ID",

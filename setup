@@ -73,7 +73,7 @@ installation(){
 }
 
 clear
-pprint "Welcome to ChikuBot Setup Installer\n\n"
+pprint "Welcome to appBot Setup Installer\n\n"
 pprint "If you see any error during Installation Process, Please refer to these files for logs: "
 pprint "\nFor node js errors , Checkout nodelog.txt"
 pprint "\nFor pypi packages errors , Checkout pypilog.txt"
@@ -85,7 +85,7 @@ update
 packages
 node
 installation
-pprint "\n\n\n\n\nChikuBot Installation Completed !" "cgreen"
+pprint "\n\n\n\n\nappBot Installation Completed !" "cgreen"
 sleep 1
 clear
 
@@ -110,5 +110,5 @@ MONGO_URL= $mongo_urk
 OWNER_ID = $ownid""" > .env
 clear
 
-pprint "\n\n\nThanks for using ChikuBot installer, your vars have been saved successfully ! \nIf you wanna add more variables add them in your env by : vi .env"
+pprint "\n\n\nThanks for using appBot installer, your vars have been saved successfully ! \nIf you wanna add more variables add them in your env by : vi .env"
 pprint "\n\nNow you can start the bot by : bash start\n\n"

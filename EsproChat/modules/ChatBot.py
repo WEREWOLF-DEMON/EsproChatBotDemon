@@ -8,8 +8,8 @@ from EsproChat import app
 from pyrogram.enums import ChatAction, ChatType
 
 mongo_client = AsyncIOMotorClient(MONGO_URL)
-db = mongo_client.chikudatabass
-chatbotdatabase = db.cchikudarabase
+db = mongo_client.appdatabass
+chatbotdatabase = db.cappdarabase
 
 async def is_admin(chat_id: int, user_id: int) -> bool:
     member = await app.get_chat_member(chat_id, user_id)
