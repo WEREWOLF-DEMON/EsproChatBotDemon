@@ -17,7 +17,7 @@ OWNER_ID = list(
 
 #Fill Only Username Without @
 SUPPORT_GROUP = getenv(
-    "SUPPORT_GROUP", "MuraliBotz"
+    "SUPPORT_GROUP", "EsproSupport"
 )  
 
 MONGO_URL = os.environ.get("MONGO_URL")
@@ -30,7 +30,7 @@ SETCMD = getenv("SETCMD", "True")
 # upstream repo 
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
-    "https://github.com/MuraliBotz/ChikuChatBot",
+    "https://github.com/EsproSupport/ChikuChatBot",
 )
 
 UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")

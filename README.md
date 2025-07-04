@@ -11,7 +11,7 @@
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif"> 
 
 
-   [![MURALI](https://github-stats-alpha.vercel.app/api?username=MURALIBOTZ&cc=255&tc=fff&ic=ff69b4&bc=870 "MURALIBOTZ")](https://github-stats-alpha.vercel.app/api?username=MURALIBOTZ&cc=000&tc=fff&ic=fff&bc=000"MURALIBOTZ)
+   [![MURALI](https://github-stats-alpha.vercel.app/api?username=EsproSupport&cc=255&tc=fff&ic=ff69b4&bc=870 "EsproSupport")](https://github-stats-alpha.vercel.app/api?username=EsproSupport&cc=000&tc=fff&ic=fff&bc=000"EsproSupport)
    
 
    
@@ -28,7 +28,7 @@
 
 sᴛᴀʀ ᴛʜɪs ʀᴇᴘᴏ ⭐ ᴀɴᴅ ғᴏʀᴋ ᴛʜᴇɴ ᴅᴇᴘʟᴏʏ 🥀
 
-<p align="center"><a href="https://dashboard.heroku.com/new?template=https://github.com/MURALIBOTZ/ChikuChatBot"> <img src="https://img.shields.io/badge/Deploy%20On%20Heroku-blue?style=for-the-badge&logo=heroku" width="220" height="38.45"/></a></p>
+<p align="center"><a href="https://dashboard.heroku.com/new?template=https://github.com/EsproSupport/ChikuChatBot"> <img src="https://img.shields.io/badge/Deploy%20On%20Heroku-blue?style=for-the-badge&logo=heroku" width="220" height="38.45"/></a></p>
 
 
 ![vdo](https://media.giphy.com/media/r7bt4IqTe6PJ6sYTLU/giphy.gif)
@@ -38,7 +38,7 @@ sᴛᴀʀ ᴛʜɪs ʀᴇᴘᴏ ⭐ ᴀɴᴅ ғᴏʀᴋ ᴛʜᴇɴ ᴅᴇᴘʟᴏ
 
 ## ᴄʀᴇᴅɪᴛs
 
-- [ᴍᴜʀᴀʟɪ](https://t.me/MuraliBotz)
+- [ᴍᴜʀᴀʟɪ](https://t.me/EsproSupport)
 - [Aᴄᴏʙᴏᴛ](https://acobot.ai)
 - [ᴘʏʀᴏɢʀᴀᴍ ](https://GitHub.com/pyrogram)
 - [ᴀʙɢ](https://github.com/Abishnoi69/Abg)
