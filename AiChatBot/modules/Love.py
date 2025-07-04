@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 import random
-from AiChatBot import Chiku
+from EsproChat import Chiku
 
 def get_random_message(love_percentage):
     if love_percentage <= 30:

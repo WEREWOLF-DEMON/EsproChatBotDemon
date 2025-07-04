@@ -1,9 +1,9 @@
 import asyncio
 import importlib
 from pyrogram import idle
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from pyrogram.types import BotCommand
-from AiChatBot.modules import ALL_MODULES
+from EsproChat.modules import ALL_MODULES
 from config import LOGGER_ID, SETCMD
 
 loop = asyncio.get_event_loop()
@@ -15,7 +15,7 @@ loop = asyncio.get_event_loop()
 async def Murali():
     await Chiku.start()
     for all_module in ALL_MODULES:
-        importlib.import_module("AiChatBot.modules." + all_module)
+        importlib.import_module("EsproChat.modules." + all_module)
     print("𝐂𝐇𝐈𝐊𝐔 𝐁𝐎𝐓 𝐇𝐀𝐒 𝐁𝐄𝐄𝐍 𝐒𝐓𝐀𝐑𝐓𝐄𝐃 ✨")
     print("𝐃𝐨𝐧𝐭 𝐅𝐨𝐫𝐠𝐞𝐭 𝐓𝐨 𝐕𝐢𝐬𝐢𝐭 @𝐌𝐮𝐫𝐚𝐥𝐢𝐁𝐨𝐭𝐳 ⭐")
     if SETCMD:

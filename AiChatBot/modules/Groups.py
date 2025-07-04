@@ -1,8 +1,8 @@
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
-from AiChatBot import Chiku as app
+from EsproChat import Chiku as app
 from config import LOGGER_ID as LOG_GROUP_ID
-from AiChatBot.Db import get_served_chats, remove_served_chat, add_served_chat
+from EsproChat.Db import get_served_chats, remove_served_chat, add_served_chat
 
 import requests
 

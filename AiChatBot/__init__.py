@@ -60,7 +60,7 @@ Chiku = ChikuBot()
 
 
 
-#from AiChatBot.Db import git
+#from EsproChat.Db import git
 
 #Up = git()
 

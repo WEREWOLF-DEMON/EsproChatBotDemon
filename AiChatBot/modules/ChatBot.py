@@ -3,8 +3,8 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from motor.motor_asyncio import AsyncIOMotorClient
 import requests
 from config import *
-from AiChatBot.Db import add_served_user, add_served_chat, get_served_chats, get_served_users
-from AiChatBot import Chiku
+from EsproChat.Db import add_served_user, add_served_chat, get_served_chats, get_served_users
+from EsproChat import Chiku
 from pyrogram.enums import ChatAction, ChatType
 
 mongo_client = AsyncIOMotorClient(MONGO_URL)

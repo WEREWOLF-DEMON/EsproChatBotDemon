@@ -1,4 +1,4 @@
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from pyrogram import filters, client 
 from pyrogram.enums import ParseMode
 

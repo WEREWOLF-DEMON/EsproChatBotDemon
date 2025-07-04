@@ -1,4 +1,4 @@
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from config import OWNER_ID, SUPPORT_GROUP
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from typing import Union

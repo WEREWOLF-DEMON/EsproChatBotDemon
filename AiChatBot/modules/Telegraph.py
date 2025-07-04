@@ -2,7 +2,7 @@ import os
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from telegraph import upload_file
-from AiChatBot import Chiku
+from EsproChat import Chiku
 
 #credit - Vivek Kumar 
 

@@ -1,4 +1,4 @@
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from motor.motor_asyncio import AsyncIOMotorClient
 import requests
 from config import *

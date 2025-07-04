@@ -10,7 +10,7 @@ from Murali import Owner
 from time import time
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from config import OWNER_ID
 
 

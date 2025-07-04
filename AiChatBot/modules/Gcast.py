@@ -1,10 +1,10 @@
-from AiChatBot import Chiku
+from EsproChat import Chiku
 import asyncio
 from pyrogram import filters
 from config import OWNER_ID
 from Murali import Owner
 from pyrogram.errors import FloodWait
-from AiChatBot.Db import get_served_chats, get_served_users
+from EsproChat.Db import get_served_chats, get_served_users
 
 @Chiku.on_cmd(["gcast", "broadcast"])
 async def broadcast_message(client, message):

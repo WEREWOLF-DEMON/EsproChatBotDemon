@@ -1,13 +1,13 @@
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from pyrogram import Client, filters
-from AiChatBot.Db import get_served_chats, get_served_users, add_served_user, add_served_chat
+from EsproChat.Db import get_served_chats, get_served_users, add_served_user, add_served_chat
 import requests 
 from Murali import Owner
 from pyrogram.enums import ChatType
 import random 
 from config import OWNER_ID, LOGGER_ID
 import asyncio
-from AiChatBot.Strings import HELP_BUTTON, START_TEXT, START_BUTTON
+from EsproChat.Strings import HELP_BUTTON, START_TEXT, START_BUTTON
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
 EMOJIOS = [

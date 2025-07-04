@@ -1,8 +1,8 @@
-from AiChatBot import Chiku
+from EsproChat import Chiku
 from pyrogram import client, filters 
 import requests
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from AiChatBot.modules.Ping import get_readable_time
+from EsproChat.modules.Ping import get_readable_time
 import time
 
 _boot_ = time.time()

@@ -1,6 +1,6 @@
 from pyrogram.types import CallbackQuery
-from AiChatBot import Chiku
-from AiChatBot.Strings import *
+from EsproChat import Chiku
+from EsproChat.Strings import *
 from pyrogram.enums import ChatType
 import requests 
 from config import OWNER_ID
