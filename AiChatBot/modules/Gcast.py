@@ -1,4 +1,4 @@
-from EsproChat import Chiku
+from EsproChat import app
 import asyncio
 from pyrogram import filters
 from config import OWNER_ID
@@ -6,7 +6,7 @@ from Murali import Owner
 from pyrogram.errors import FloodWait
 from EsproChat.Db import get_served_chats, get_served_users
 
-@Chiku.on_cmd(["gcast", "broadcast"])
+@app.on_cmd(["gcast", "broadcast"])
 async def broadcast_message(client, message):
     if message.from_user.id not in Owner and message.from_user.id not in OWNER_ID:
         return await message.reply_text(

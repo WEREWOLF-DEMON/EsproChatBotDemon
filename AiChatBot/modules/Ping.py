@@ -1,4 +1,4 @@
-from EsproChat import Chiku
+from EsproChat import app
 from pyrogram import filters
 import time
 from datetime import datetime
@@ -29,7 +29,7 @@ def get_readable_time(seconds: int) -> str:
 
 _boot_ = time.time()
 
-@Chiku.on_cmd("ping")
+@app.on_cmd("ping")
 async def pingbot(client, message):
     start = datetime.now()
     Hello = (datetime.now() - start).microseconds / 1000
@@ -37,5 +37,5 @@ async def pingbot(client, message):
     m = response["results"][0]["url"]
     bot_uptime = int(time.time() - _boot_)
     Uptime = f"{get_readable_time(bot_uptime)}"
-    await message.reply_photo(m, caption=f"<u>{Chiku.mention}</u> \n\nᴘɪɴɢ ᴘᴏɴɢ `{Hello}` ms\nᴜᴘᴛɪᴍᴇ - {Uptime}")
+    await message.reply_photo(m, caption=f"<u>{app.mention}</u> \n\nᴘɪɴɢ ᴘᴏɴɢ `{Hello}` ms\nᴜᴘᴛɪᴍᴇ - {Uptime}")
 

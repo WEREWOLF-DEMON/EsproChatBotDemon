@@ -56,7 +56,7 @@ class ChikuBot(Client):
             
 
 
-Chiku = ChikuBot()
+app = ChikuBot()
 
 
 

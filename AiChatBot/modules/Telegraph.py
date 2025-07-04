@@ -2,11 +2,11 @@ import os
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from telegraph import upload_file
-from EsproChat import Chiku
+from EsproChat import app
 
 #credit - Vivek Kumar 
 
-@Chiku.on_cmd(["tgm", "tgt", "telegraph", "tl"])
+@app.on_cmd(["tgm", "tgt", "telegraph", "tl"])
 async def get_link_group(client, message):
     if not message.reply_to_message:
         return await message.reply_text(

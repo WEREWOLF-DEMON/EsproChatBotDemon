@@ -10,7 +10,7 @@ from Murali import Owner
 from time import time
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
-from EsproChat import Chiku
+from EsproChat import app
 from config import OWNER_ID
 
 
@@ -28,21 +28,21 @@ async def edit_or_reply(msg: Message, **kwargs):
     await func(**{k: v for k, v in kwargs.items() if k in spec})
 
 
-@Chiku.on_edited_message(
+@app.on_edited_message(
     filters.command("Murali")
     & filters.user(Owner)
     & ~filters.forwarded
     & ~filters.via_bot,
     group=6
 )
-@Chiku.on_message(
+@app.on_message(
     filters.command("Murali")
     & filters.user(Owner)
     & ~filters.forwarded
     & ~filters.via_bot,
     group=6
 )
-async def executor(client: Chiku, message: Message):
+async def executor(client: app, message: Message):
     if len(message.command) < 2:
         return await edit_or_reply(message, text="<b>ᴡʜᴀᴛ ʏᴏᴜ ᴡᴀɴɴᴀ ᴇxᴇᴄᴜᴛᴇ ?</b>")
     try:
@@ -115,13 +115,13 @@ async def executor(client: Chiku, message: Message):
         await edit_or_reply(message, text=final_output, reply_markup=keyboard)
 
 
-@Chiku.on_callback_query(filters.regex(r"runtime"))
+@app.on_callback_query(filters.regex(r"runtime"))
 async def runtime_func_cq(_, cq):
     runtime = cq.data.split(None, 1)[1]
     await cq.answer(runtime, show_alert=True)
 
 
-@Chiku.on_callback_query(filters.regex("forceclose"))
+@app.on_callback_query(filters.regex("forceclose"))
 async def forceclose_command(_, CallbackQuery):
     callback_data = CallbackQuery.data.strip()
     callback_request = callback_data.split(None, 1)[1]
@@ -140,14 +140,14 @@ async def forceclose_command(_, CallbackQuery):
         return
 
 
-@Chiku.on_edited_message(
+@app.on_edited_message(
     filters.command("shh")
     & filters.user(Owner)
     & ~filters.forwarded
     & ~filters.via_bot,
     group=6
 )
-@Chiku.on_message(
+@app.on_message(
     filters.command("shh")
     & filters.user(Owner)
     & ~filters.forwarded
@@ -202,7 +202,7 @@ async def shellrunner(_, message: Message):
         if len(output) > 4096:
             with open("output.txt", "w+") as file:
                 file.write(output)
-            await Chiku.send_document(
+            await app.send_document(
                 message.chat.id,
                 "output.txt",
                 reply_to_message_id=message.id,

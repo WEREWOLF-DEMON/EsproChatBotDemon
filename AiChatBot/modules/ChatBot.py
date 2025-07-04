@@ -4,7 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import requests
 from config import *
 from EsproChat.Db import add_served_user, add_served_chat, get_served_chats, get_served_users
-from EsproChat import Chiku
+from EsproChat import app
 from pyrogram.enums import ChatAction, ChatType
 
 mongo_client = AsyncIOMotorClient(MONGO_URL)
@@ -12,10 +12,10 @@ db = mongo_client.chikudatabass
 chatbotdatabase = db.cchikudarabase
 
 async def is_admin(chat_id: int, user_id: int) -> bool:
-    member = await Chiku.get_chat_member(chat_id, user_id)
+    member = await app.get_chat_member(chat_id, user_id)
     return member.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]
 
-@Chiku.on_message(filters.command("chatbot") & filters.group, group=6)
+@app.on_message(filters.command("chatbot") & filters.group, group=6)
 async def chatbot_command(_, message: Message):
     if await is_admin(message.chat.id, message.from_user.id):
         response = requests.get("https://nekos.best/api/v2/neko").json()
@@ -32,7 +32,7 @@ async def chatbot_command(_, message: Message):
     else:
         await message.reply_text("ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ɪꜱ ᴏɴʟʏ ꜰᴏʀ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴꜱ.", show_alert=True)
 
-@Chiku.on_callback_query(filters.regex(r"^(enable|disable)_chatbot$"))
+@app.on_callback_query(filters.regex(r"^(enable|disable)_chatbot$"))
 async def enable_disable_chatbot(_, query: types.CallbackQuery):
     chat_id = query.message.chat.id
     action = query.data
@@ -56,7 +56,7 @@ async def enable_disable_chatbot(_, query: types.CallbackQuery):
     else:
         await query.answer("ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ɪꜱ ᴏɴʟʏ ꜰᴏʀ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴꜱ.", show_alert=True)
 
-@Chiku.on_message(
+@app.on_message(
     (filters.text & ~filters.bot), group=4
 )
 async def chatbottexts(client, message):

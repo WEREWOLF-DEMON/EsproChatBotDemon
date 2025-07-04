@@ -1,4 +1,4 @@
-from EsproChat import Chiku
+from EsproChat import app
 from pyrogram import Client, filters
 from EsproChat.Db import get_served_chats, get_served_users, add_served_user, add_served_chat
 import requests 
@@ -67,10 +67,10 @@ PHOTOS = [
     "https://telegra.ph/file/e8d502afc144e77d81c48.jpg"
 ]
 
-@Chiku.on_cmd("start")
+@app.on_cmd("start")
 async def startbot(client, message):
     try:
-        await Chiku.resolve_peer(OWNER_ID[0])
+        await app.resolve_peer(OWNER_ID[0])
         OWNER = OWNER_ID[0]
     except:
         OWNER = OWNER_ID[0]
@@ -104,7 +104,7 @@ async def startbot(client, message):
     image_url = response["results"][0]["url"]
     await message.reply_photo(
         image_url,
-        caption=START_TEXT.format(message.from_user.mention, Chiku.mention),
+        caption=START_TEXT.format(message.from_user.mention, app.mention),
         reply_markup=M,
     )
     await fff.delete()
@@ -115,10 +115,10 @@ async def startbot(client, message):
             await add_served_chat(message.chat.id)
     except:
         pass
-    await Chiku.send_message(LOGGER_ID, f"ꜱᴏᴍᴇᴏɴᴇ ᴊᴜꜱᴛ ꜱᴛᴀʀᴛᴇᴅ {Chiku.mention}\n\nɴᴀᴍᴇ - {message.from_user.mention}\nɪᴅ - {message.from_user.id}\nᴜꜱᴇʀɴᴀᴍᴇ - @{message.from_user.username}")
+    await app.send_message(LOGGER_ID, f"ꜱᴏᴍᴇᴏɴᴇ ᴊᴜꜱᴛ ꜱᴛᴀʀᴛᴇᴅ {app.mention}\n\nɴᴀᴍᴇ - {message.from_user.mention}\nɪᴅ - {message.from_user.id}\nᴜꜱᴇʀɴᴀᴍᴇ - @{message.from_user.username}")
                                                                                                                                                                 
 
-@Chiku.on_cmd("stats")
+@app.on_cmd("stats")
 async def statsbot(client, message):
     if message.from_user.id not in Owner and message.from_user.id not in OWNER_ID:
         return
@@ -129,7 +129,7 @@ async def statsbot(client, message):
     chats = len(await get_served_chats())
     await message.reply_photo(
         photo=m,
-        caption=f"""ʜᴇʀᴇ ɪꜱ ᴛʜᴇ ᴛᴏᴛᴀʟ ꜱᴛᴀᴛꜱ ᴏꜰ {Chiku.mention}:
+        caption=f"""ʜᴇʀᴇ ɪꜱ ᴛʜᴇ ᴛᴏᴛᴀʟ ꜱᴛᴀᴛꜱ ᴏꜰ {app.mention}:
 
 ➻ ᴄʜᴀᴛs : {chats}
 ➻ ᴜsᴇʀs : {users}

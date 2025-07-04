@@ -1,4 +1,4 @@
-from EsproChat import Chiku
+from EsproChat import app
 from motor.motor_asyncio import AsyncIOMotorClient
 import requests
 from config import *

@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 import random
-from EsproChat import Chiku
+from EsproChat import app
 
 def get_random_message(love_percentage):
     if love_percentage <= 30:
@@ -28,7 +28,7 @@ def get_random_message(love_percentage):
             "ᴅᴇsᴛɪɴᴇᴅ ᴛᴏ ʙᴇ ᴛᴏɢᴇᴛʜᴇʀ. ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴs!"
         ])
       
-@Chiku.on_cmd("love")
+@app.on_cmd("love")
 async def love_command(client, message):
     command, *args = message.text.split(" ")
     if not len(args) >= 2:

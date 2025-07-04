@@ -1,4 +1,4 @@
-from EsproChat import Chiku
+from EsproChat import app
 from config import OWNER_ID, SUPPORT_GROUP
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from typing import Union
@@ -48,7 +48,7 @@ def START_BUTTON(OWNER: Union[bool, int] = None):
                 [
                     InlineKeyboardButton(
                         text="ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ 💓",
-                        url=f"https://t.me/{Chiku.username}?startgroup=true",
+                        url=f"https://t.me/{app.username}?startgroup=true",
                     ),
                 ],
                 [

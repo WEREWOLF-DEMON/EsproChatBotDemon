@@ -1,9 +1,9 @@
-from EsproChat import Chiku
+from EsproChat import app
 from pyrogram import filters, client 
 from pyrogram.enums import ParseMode
 
 
-@Chiku.on_cmd("id")
+@app.on_cmd("id")
 async def getid(client, message):
     chat = message.chat
     your_id = message.from_user.id

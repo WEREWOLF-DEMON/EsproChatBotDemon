@@ -5,7 +5,7 @@
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif"> 
 
 <div align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?color=FFA500&center=true&lines=Welcome+To+Chiku+Chat+Bot;Im+An+Ai+Based+Chat+Bot&width=600&height=180">
+  <img src="https://readme-typing-svg.herokuapp.com?color=FFA500&center=true&lines=Welcome+To+app+Chat+Bot;Im+An+Ai+Based+Chat+Bot&width=600&height=180">
 </div>
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif"> 
