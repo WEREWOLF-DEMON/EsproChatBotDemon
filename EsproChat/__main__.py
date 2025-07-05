@@ -17,7 +17,7 @@ async def Murali():
     for all_module in ALL_EModules:
         importlib.import_module("EsproChat.EModules." + all_module)
     print("𝐂𝐇𝐈𝐊𝐔 𝐁𝐎𝐓 𝐇𝐀𝐒 𝐁𝐄𝐄𝐍 𝐒𝐓𝐀𝐑𝐓𝐄𝐃 ✨")
-    print("𝐃𝐨𝐧𝐭 𝐅𝐨𝐫𝐠𝐞𝐭 𝐓𝐨 𝐕𝐢𝐬𝐢𝐭 @𝐌𝐮𝐫𝐚𝐥𝐢𝐁𝐨𝐭𝐳 ⭐")
+    print("𝐃𝐨𝐧𝐭 𝐅𝐨𝐫𝐠𝐞𝐭 𝐓𝐨 𝐕𝐢𝐬𝐢𝐭 @ ⭐")
     if SETCMD:
         try:
             await app.set_bot_commands(
