@@ -6,5 +6,5 @@ python-dotenv==1.0.0
 telegraph==2.2.0
 Abg==2.3.1
 gitpython==3.1.43
-motor==3.1.2
+motor==2.5.1
 pymongo==3.12.3
