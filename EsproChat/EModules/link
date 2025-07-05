@@ -1,3 +1,4 @@
+,,,
 from pyrogram import Client, filters, enums
 from pyrogram.types import Message, ChatPermissions
 import re
@@ -56,3 +57,4 @@ async def handle_links(_, message: Message):
             )
     except Exception as e:
         print(f"Bio check failed: {e}")
+,,,
