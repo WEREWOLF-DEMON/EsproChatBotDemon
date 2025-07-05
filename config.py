@@ -22,7 +22,7 @@ SUPPORT_GROUP = getenv(
 
 MONGO_URL = os.environ.get("MONGO_URL")
 
-LOGGER_ID = int(getenv("LOGGER_ID", "-1002242562595"))
+LOGGER_ID = int(getenv("LOGGER_ID", "-1002861883767"))
 
 # set True if you want yo set bot commands automatically 
 SETCMD = getenv("SETCMD", "True")
