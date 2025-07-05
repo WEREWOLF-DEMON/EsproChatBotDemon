@@ -1,6 +1,6 @@
 from pyrogram.types import CallbackQuery
 from EsproChat import app
-from EsproChat.utilss import *
+from EsproChat.utils import *
 from pyrogram.enums import ChatType
 import requests 
 from config import OWNER_ID
