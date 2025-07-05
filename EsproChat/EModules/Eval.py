@@ -5,7 +5,7 @@ import sys
 import asyncio
 import traceback
 from inspect import getfullargspec
-from io import utilsIO
+from io import utilIO
 from Murali import Owner
 from time import time
 from pyrogram import filters
@@ -52,8 +52,8 @@ async def executor(client: app, message: Message):
     t1 = time()
     old_stderr = sys.stderr
     old_stdout = sys.stdout
-    redirected_output = sys.stdout = utilsIO()
-    redirected_error = sys.stderr = utilsIO()
+    redirected_output = sys.stdout = utilIO()
+    redirected_error = sys.stderr = utilIO()
     stdout, stderr, exc = None, None, None
     try:
         await aexec(cmd, client, message)
