@@ -1,5 +1,5 @@
 from EsproChat import app
-from pyrogram import client, filters 
+from pyrogram import client, Client, filters 
 import requests
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from EsproChat.EModules.Ping import get_readable_time
