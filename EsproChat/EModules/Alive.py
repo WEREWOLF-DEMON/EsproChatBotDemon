@@ -4,6 +4,7 @@ import requests
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from EsproChat.EModules.Ping import get_readable_time
 import time
+from pyrogram.types import Message
 
 _boot_ = time.time()
 
@@ -23,3 +24,23 @@ async def alive(client, message):
                 ],
             ]
     ))
+
+
+
+@app.on_message(filters.command("staff") & filters.group)
+async def staff_list(_, message: Message):
+    chat_id = message.chat.id
+
+    # Admins fetch karo
+    admins = await app.get_chat_members(chat_id, filter="administrators")
+
+    staff_text = "👮‍♂️ **Group Staff List:**\n\n"
+    for admin in admins:
+        user = admin.user
+        if user.is_bot:
+            continue  # bots skip
+        name = user.mention
+        status = "👑 Owner" if admin.status == "creator" else "🛡️ Admin"
+        staff_text += f"{status} - {name}\n"
+
+    await message.reply_text(staff_text)
