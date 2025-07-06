@@ -27,9 +27,7 @@ async def alive(client, message):
     ))
 
 
-
-
-@app.on_message(filters.command("staff") & filters.group)
+@Client.on_message(filters.command("staff") & filters.group)
 async def staff_list(client, message: Message):
     chat_id = message.chat.id
     staff_text = "<b>🌐 GROUP STAFF</b>\n\n"
@@ -37,7 +35,7 @@ async def staff_list(client, message: Message):
     founder = None
     admins = []
 
-    async for member in client.get_chat_members(chat_id, filter="administrators"):
+    async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
         user = member.user
         name = f"<a href='https://t.me/{user.username}'>{user.mention}</a>" if user.username else user.mention
 
