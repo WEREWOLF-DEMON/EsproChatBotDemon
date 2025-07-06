@@ -1,11 +1,15 @@
 import os
-from PIL import ImageDraw, Image, ImageFont, ImageChops
-from pyrogram import *
+from PIL import ImageDraw, Image, ImageFont, ImageChops, Image
+from pyrogram import Client, filters, enums
 from pyrogram.types import *
+from pyrogram.handlers import ChatMemberUpdatedHandler
 from logging import getLogger
 from EsproChat import app
 
 LOGGER = getLogger(__name__)
+
+# Set your logging channel ID here
+LOGGER_ID = -1002861883767  # 🔁 Replace with your actual log channel ID
 
 # In-memory welcome database
 class WelDatabase:
@@ -32,7 +36,7 @@ class temp:
     U_NAME = None
     B_NAME = None
 
-# Create a circular version of the user's profile photo
+# 🔵 Make circular profile picture
 def circle(pfp, size=(500, 500)):
     pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
@@ -44,7 +48,7 @@ def circle(pfp, size=(500, 500)):
     pfp.putalpha(mask)
     return pfp
 
-# Generate the welcome image with user info and group title
+# 🔵 Create welcome image
 def welcomepic(pic, user, chatname, id, uname):
     os.makedirs("downloads", exist_ok=True)
     background = Image.open("EsproChat/assets/wel2.png")
@@ -60,7 +64,7 @@ def welcomepic(pic, user, chatname, id, uname):
     background.save(output_path)
     return output_path
 
-# Enable or disable special welcome
+# 🔘 Enable/Disable welcome command
 @app.on_message(filters.command("wel") & ~filters.private)
 async def auto_state(_, message):
     usage = "**Usage:**\n⦿ /wel [on|off]\nOnly admins can use this command."
@@ -94,7 +98,7 @@ async def auto_state(_, message):
     else:
         await message.reply("🚫 Only admins can use this command.")
 
-# Send welcome image when a new member joins (chat_member_updated handler)
+# 🟣 Send welcome image on member join
 @app.on_chat_member_updated(filters.group, group=-3)
 async def greet_group(_, member: ChatMemberUpdated):
     chat_id = member.chat.id
@@ -112,15 +116,19 @@ async def greet_group(_, member: ChatMemberUpdated):
     user = member.new_chat_member.user if member.new_chat_member else member.from_user
 
     try:
-        pic = await app.download_media(user.photo.big_file_id, file_name=f"downloads/pp{user.id}.png")
-    except AttributeError:
+        photos = await app.get_profile_photos(user.id)
+        if photos.total_count > 0:
+            pic = await app.download_media(photos[0].file_id, file_name=f"downloads/pp{user.id}.png")
+        else:
+            pic = "EsproChat/assets/upic.png"
+    except Exception:
         pic = "EsproChat/assets/upic.png"
 
     if temp.MELCOW.get(f"welcome-{member.chat.id}") is not None:
         try:
             await temp.MELCOW[f"welcome-{member.chat.id}"].delete()
         except Exception as e:
-            LOGGER.exception("Failed to delete old welcome message:", exc_info=e)
+            LOGGER.warning("Failed to delete old welcome message: %s", str(e))
 
     try:
         welcomeimg = welcomepic(pic, user.first_name, member.chat.title, user.id, user.username)
@@ -148,12 +156,13 @@ async def greet_group(_, member: ChatMemberUpdated):
     except Exception:
         pass
 
-# Inform when bot is added to a group
+# 🔘 Log when bot added to group
 @app.on_message(filters.new_chat_members & filters.group, group=-1)
 async def bot_wel(_, message):
     for u in message.new_chat_members:
-        if u.id == app.me.id:
-            await app.send_message(LOGGER_ID, f"""
+        if u.id == (await app.get_me()).id:
+            try:
+                await app.send_message(LOGGER_ID, f"""
 **NEW GROUP ADDED**
 ━━━━━━━━━━━━━━━━━━━━
 **NAME:** {message.chat.title}
@@ -161,3 +170,5 @@ async def bot_wel(_, message):
 **USERNAME:** @{message.chat.username if message.chat.username else "N/A"}
 ━━━━━━━━━━━━━━━━━━━━
 """)
+            except Exception as e:
+                LOGGER.warning("Failed to send group log message: %s", str(e))
