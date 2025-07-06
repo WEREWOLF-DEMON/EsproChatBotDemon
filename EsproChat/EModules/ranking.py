@@ -8,7 +8,7 @@ import telegram
 from pyrogram.types import *
 
 
-mongo_client = MongoClient(MONGO_DB_URI)
+mongo_client = MongoClient(MONGO_URL)
 db = mongo_client["EsproMain"]
 collection = db["rankings"]
 
