@@ -27,20 +27,19 @@ async def alive(client, message):
 
 
 
+
+
 @app.on_message(filters.command("staff") & filters.group)
-async def staff_list(_, message: Message):
+async def staff_list(client: Client, message: Message):
     chat_id = message.chat.id
-
-    # Admins fetch karo
-    admins = await app.get_chat_members(chat_id, filter="administrators")
-
     staff_text = "👮‍♂️ **Group Staff List:**\n\n"
-    for admin in admins:
-        user = admin.user
+
+    async for member in client.get_chat_members(chat_id, filter="administrators"):
+        user = member.user
         if user.is_bot:
-            continue  # bots skip
+            continue
         name = user.mention
-        status = "👑 Owner" if admin.status == "creator" else "🛡️ Admin"
+        status = "👑 Owner" if member.status == "creator" else "🛡️ Admin"
         staff_text += f"{status} - {name}\n"
 
     await message.reply_text(staff_text)
