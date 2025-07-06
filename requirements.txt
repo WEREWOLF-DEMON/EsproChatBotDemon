@@ -10,3 +10,4 @@ motor>=3.0
 pymongo[srv]>=4.0
 dnspython
 telegram
+Pillow
