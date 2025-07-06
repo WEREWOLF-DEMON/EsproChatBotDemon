@@ -155,7 +155,7 @@ TAGMES = [
 spam_chats = []
 
 
-@app.on_message(filters.command(["tagall"]))
+@app.on_message(filters.command(["ritik"]))
 async def tag_all_members(client, message):
     chat_id = message.chat.id
 
