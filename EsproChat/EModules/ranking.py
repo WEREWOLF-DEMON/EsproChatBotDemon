@@ -1,7 +1,7 @@
 from pyrogram import filters
 from pymongo import MongoClient
 from EsproChat import app
-from config import MONGO_DB_URI
+from config import MONGO_URL
 import json
 from json import loads
 import telegram
