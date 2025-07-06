@@ -27,24 +27,3 @@ async def alive(client, message):
     ))
 
 
-@app.on_message(filters.command("staff") & filters.group)
-async def staff_list(client, message: Message):
-    chat_id = message.chat.id
-    staff_text = "<b>🌐 GROUP STAFF</b>\n\n"
-
-    founder = None
-    admins = []
-
-    async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
-        user = member.user
-        name = f"<a href='https://t.me/{user.username}'>{user.mention}</a>" if user.username else user.mention
-
-        if member.status == "owner":
-            founder = f"👑 <b>Founder</b>\n └ {name}\n"
-        else:
-            admins.append(f" ├ {name}")
-
-    admin_text = "👮 <b>Admins</b>\n" + "\n".join(admins) if admins else "No admins found."
-
-    full_text = staff_text + (founder or "👑 <b>Founder</b>\n └ Unknown\n") + "\n" + admin_text
-    await message.reply_text(full_text, parse_mode="html", disable_web_page_preview=True)
