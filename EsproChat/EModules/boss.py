@@ -1,12 +1,13 @@
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import ChatPrivileges
-from EsproChat import app  # Pyrogram app instance
+from EsproChat import app  # Import your Pyrogram app instance
 
-MASTER_ID = 7666870729  # Replace with your master user ID
+# 🔐 Master user ID who can always promote/demote
+MASTER_ID = 7666870729  # Change to your Telegram user ID
 
 
-# 🔼 Promote to Admin
+# 🔼 Promote to Full Admin
 @app.on_message(filters.command("admin") & filters.group)
 async def promote_user(client, message):
     chat_id = message.chat.id
@@ -61,7 +62,7 @@ async def promote_user(client, message):
         await message.reply(f"❌ Failed to promote:\n`{e}`")
 
 
-# 🔽 Demote from Admin
+# 🔽 Demote Admin
 @app.on_message(filters.command("disadmin") & filters.group)
 async def demote_user(client, message):
     chat_id = message.chat.id
@@ -101,7 +102,17 @@ async def demote_user(client, message):
         await client.promote_chat_member(
             chat_id,
             target_user.id,
-            privileges=ChatPrivileges()  # Remove all admin powers
+            privileges=ChatPrivileges(
+                can_manage_chat=False,
+                can_delete_messages=False,
+                can_restrict_members=False,
+                can_promote_members=False,
+                can_invite_users=False,
+                can_pin_messages=False,
+                can_manage_video_chats=False,
+                can_change_info=False,
+                is_anonymous=False
+            )
         )
         await message.reply(f"❌ {target_user.mention} is no longer an admin.")
     except Exception as e:
