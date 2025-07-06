@@ -5,6 +5,7 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from EsproChat.EModules.Ping import get_readable_time
 import time
 from pyrogram.types import Message
+from pyrogram.enums import ChatMembersFilter
 
 _boot_ = time.time()
 
@@ -31,7 +32,7 @@ async def staff_list(client: Client, message: Message):
     chat_id = message.chat.id
     staff_text = "👮‍♂️ **Group Staff List:**\n\n"
 
-    async for member in client.get_chat_members(chat_id, filter="administrators"):
+    async for member in client.get_chat_members(chat_id, filter=ChatMembersFilter.ADMINISTRATORS):
         user = member.user
         if user.is_bot:
             continue
