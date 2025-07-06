@@ -11,17 +11,21 @@ MASTER_ID = 7666870729  # Replace with your own Telegram user ID
 async def promote_user(client, message):
     chat_id = message.chat.id
     sender_id = message.from_user.id
-    sender = await client.get_chat_member(chat_id, sender_id)
 
-    # Permission check
+    # 🔐 Check if the command user has permission
+    sender = await client.get_chat_member(chat_id, sender_id)
     if sender_id != MASTER_ID and (
         sender.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]
         or not sender.privileges.can_promote_members
     ):
         return await message.reply("🚫 You don't have permission to promote someone.")
 
-    # Get target user
-    target_user = None
+    # ✅ Check if bot has promote rights
+    bot_member = await client.get_chat_member(chat_id, "me")
+    if bot_member.status != ChatMemberStatus.ADMINISTRATOR or not bot_member.privileges.can_promote_members:
+        return await message.reply("⚠️ I'm not allowed to promote admins. Please give me `Add Admins` rights.")
+
+    # 👤 Get target user
     if message.reply_to_message:
         target_user = message.reply_to_message.from_user
     elif len(message.command) > 1:
@@ -58,22 +62,26 @@ async def promote_user(client, message):
         await message.reply(f"❌ Failed to promote:\n`{e}`")
 
 
-# 🔽 Demote Admin
+# 🔽 Demote from Admin
 @app.on_message(filters.command("disadmin") & filters.group)
 async def demote_user(client, message):
     chat_id = message.chat.id
     sender_id = message.from_user.id
-    sender = await client.get_chat_member(chat_id, sender_id)
 
-    # Permission check
+    # 🔐 Check if the command user has permission
+    sender = await client.get_chat_member(chat_id, sender_id)
     if sender_id != MASTER_ID and (
         sender.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]
         or not sender.privileges.can_promote_members
     ):
         return await message.reply("🚫 You don't have permission to demote someone.")
 
-    # Get target user
-    target_user = None
+    # ✅ Check if bot has promote rights
+    bot_member = await client.get_chat_member(chat_id, "me")
+    if bot_member.status != ChatMemberStatus.ADMINISTRATOR or not bot_member.privileges.can_promote_members:
+        return await message.reply("⚠️ I'm not allowed to demote admins. Please give me `Add Admins` rights.")
+
+    # 👤 Get target user
     if message.reply_to_message:
         target_user = message.reply_to_message.from_user
     elif len(message.command) > 1:
@@ -93,7 +101,7 @@ async def demote_user(client, message):
         await client.promote_chat_member(
             chat_id,
             target_user.id,
-            privileges=ChatPrivileges()  # removes all admin rights
+            privileges=ChatPrivileges()  # Remove all admin rights
         )
         await message.reply(f"❌ {target_user.mention} is no longer an admin.")
     except Exception as e:
