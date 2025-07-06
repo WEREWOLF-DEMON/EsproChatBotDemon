@@ -11,3 +11,4 @@ pymongo[srv]>=4.0
 dnspython
 telegram
 Pillow
+aiohttp
