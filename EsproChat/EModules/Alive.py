@@ -26,9 +26,6 @@ async def alive(client, message):
     ))
 
 
-
-
-
 @app.on_message(filters.command("staff") & filters.group)
 async def staff_list(client: Client, message: Message):
     chat_id = message.chat.id
@@ -38,8 +35,7 @@ async def staff_list(client: Client, message: Message):
         user = member.user
         if user.is_bot:
             continue
-        name = user.mention
         status = "👑 Owner" if member.status == "creator" else "🛡️ Admin"
-        staff_text += f"{status} - {name}\n"
+        staff_text += f"{status} - {user.mention}\n"
 
     await message.reply_text(staff_text)
