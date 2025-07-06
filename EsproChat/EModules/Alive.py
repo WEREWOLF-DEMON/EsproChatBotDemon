@@ -27,7 +27,7 @@ async def alive(client, message):
     ))
 
 
-@Client.on_message(filters.command("staff") & filters.group)
+@app.on_message(filters.command("staff") & filters.group)
 async def staff_list(client, message: Message):
     chat_id = message.chat.id
     staff_text = "<b>🌐 GROUP STAFF</b>\n\n"
