@@ -15,12 +15,15 @@ MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retr
 mongo = MongoClient(MONGO_URI)
 chatdb = mongo.ChatDB.chat_data
 
-# ❌ Check if replying or mentioning someone else
+# ❌ Ignore if replying/mentioning someone other than the bot
 def is_message_for_someone_else(message: Message):
+    # Ignore if replying to someone (not bot)
     if message.reply_to_message:
         replied_user = message.reply_to_message.from_user
         if replied_user and not replied_user.is_self:
             return True
+
+    # Ignore if mentioning anyone other than the bot
     if message.entities:
         for entity in message.entities:
             if entity.type == "mention":
@@ -36,36 +39,36 @@ async def smart_bot_handler(client, message: Message):
         pass
     elif message.chat.type in ("group", "supergroup"):
         if is_message_for_someone_else(message):
-            return
+            return  # ❌ Ignore group messages that tag or reply to others
 
     await message.reply_chat_action(ChatAction.TYPING)
-    await asyncio.sleep(1)  # optional typing delay
+    await asyncio.sleep(1)
 
     try:
         user_input = message.text.strip().lower()
 
-        # 🔎 Check MongoDB
+        # 🔍 Check MongoDB first
         data = chatdb.find_one({"question": user_input})
         if data:
             return await message.reply(data["answer"])
 
-        # 💬 Prompt
+        # 🧠 GPT prompt
         prompt = f"""
-Tum ek real ladki ho, har reply chhoti aur friendly Hindi mein do. Sirf 1-2 line.
+Tum ek real ladki ho. Har reply chhoti aur friendly Hindi mein do. Sirf 1-2 line likho.
 
 User: {message.text}
 Espro:
 """
 
-        # 🧠 GPT response using working model
+        # GPT reply (safe model)
         response = g4f.ChatCompletion.create(
-            model=g4f.models.gpt_4,  # ✅ Working model
+            model=g4f.models.gpt_4,  # ✅ safe model
             messages=[{"role": "user", "content": prompt}],
         )
 
         final_answer = response.strip()
 
-        # 💾 Save to MongoDB
+        # ✅ Save learned reply to MongoDB
         if final_answer:
             chatdb.update_one(
                 {"question": user_input},
@@ -79,7 +82,7 @@ Espro:
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
 
-# ✅ /teach command to manually teach the bot
+# ✅ /teach command for manual learning
 @app.on_message(filters.command("teach") & filters.text)
 async def teach_command(client, message: Message):
     is_owner = message.from_user.id == OWNER_ID
