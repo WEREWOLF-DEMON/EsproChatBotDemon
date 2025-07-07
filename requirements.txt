@@ -12,3 +12,4 @@ dnspython
 telegram
 Pillow
 aiohttp
+matplotlib
