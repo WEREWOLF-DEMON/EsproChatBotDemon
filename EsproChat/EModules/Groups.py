@@ -33,7 +33,7 @@ async def on_new_chat_members(client: Client, message: Message):
             f"┣★ **ᴀᴅᴅᴇᴅ ʙʏ** › : {added_by} \n"
             f"┗━━━━━━━━━★ "
         )
-        await app.send_photo(LOG_GROUP_ID, photo=image_url, caption=msg)
+        await app.send_photo(LOGGER_ID, photo=image_url, caption=msg)
   
         await add_served_chat(chat_id)
 
@@ -52,6 +52,6 @@ async def on_left_chat_member(_, message: Message):
             f"๏ ɢʀᴏᴜᴘ ɪᴅ ➠ {chat_id}\n"
             f"๏ ʙᴏᴛ ʀᴇᴍᴏᴠᴇᴅ ʙʏ ➠ {remove_by}\n"
         )
-        await app.send_photo(LOG_GROUP_ID, photo=image_url, caption=left)
+        await app.send_photo(LOGGER_ID, photo=image_url, caption=left)
         await remove_served_chat(chat_id)
         
