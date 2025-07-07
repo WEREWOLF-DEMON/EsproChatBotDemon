@@ -1,155 +1,130 @@
+import io
+import matplotlib.pyplot as plt
 from pyrogram import filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pymongo import MongoClient
+from datetime import datetime, timedelta
 from EsproChat import app
 from config import MONGO_URL
-import json
-from json import loads
-import telegram
-from pyrogram.types import *
-
 
 mongo_client = MongoClient(MONGO_URL)
 db = mongo_client["EsproMain"]
-collection = db["rankings"]
+messages_col = db["messages"]
 
-user_data = {}
+# ========== Message Tracker ==========
+@app.on_message(filters.group, group=6)
+async def count_messages(_, message: Message):
+    user = message.from_user
+    if not user:
+        return
 
-today = {}
-
-pic = "https://telegra.ph/file/069e69ad5b08eaf94844e.jpg"
-
-
-# ------------------- watcher ----------------------- #
-
-@app.on_message(filters.group & filters.group, group=6)
-def today_watcher(_, message):
+    user_id = user.id
     chat_id = message.chat.id
-    user_id = message.from_user.id
-    if chat_id in today and user_id in today[chat_id]:
-        today[chat_id][user_id]["total_messages"] += 1
-    else:
-        if chat_id not in today:
-            today[chat_id] = {}
-        if user_id not in today[chat_id]:
-            today[chat_id][user_id] = {"total_messages": 1}
-        else:
-            today[chat_id][user_id]["total_messages"] = 1
+    today_date = datetime.utcnow().strftime("%Y-%m-%d")
 
+    messages_col.update_one(
+        {"chat_id": chat_id, "user_id": user_id, "date": today_date},
+        {"$inc": {"count": 1}},
+        upsert=True
+    )
 
-@app.on_message(filters.group & filters.group, group=11)
-def _watcher(_, message):
-    user_id = message.from_user.id    
-    user_data.setdefault(user_id, {}).setdefault("total_messages", 0)
-    user_data[user_id]["total_messages"] += 1    
-    collection.update_one({"_id": user_id}, {"$inc": {"total_messages": 1}}, upsert=True)
+# ========== Bar Chart Generator ==========
+def generate_bar_chart(data: list, title: str):
+    names = [item["name"] for item in data]
+    counts = [item["count"] for item in data]
 
+    fig, ax = plt.subplots(figsize=(8, 4))
+    bars = ax.barh(names[::-1], counts[::-1], color="#b30059")
+    ax.set_title(title)
+    ax.set_xlabel("Messages")
+    ax.grid(True, axis='x', linestyle='--', alpha=0.5)
 
-# ------------------- ranks ------------------ #
+    for bar in bars:
+        width = bar.get_width()
+        ax.text(width + 1, bar.get_y() + bar.get_height() / 2, f'{width}', va='center')
 
-@app.on_message(filters.command("today"))
-async def today_(_, message):
-    chat_id = message.chat.id
-    if chat_id in today:
-        users_data = [(user_id, user_data["total_messages"]) for user_id, user_data in today[chat_id].items()]
-        sorted_users_data = sorted(users_data, key=lambda x: x[1], reverse=True)[:10]
-        
-        if sorted_users_data:
-            response = "**📈 LEADERBOARD TODAY**\n"
-            for idx, (user_id, total_messages) in enumerate(sorted_users_data, start=1):
-                try:
-                    user_name = (await app.get_users(user_id)).first_name
-                except:
-                    user_name = "Unknown"
-                user_info = f"**{idx}**. {user_name} • {total_messages}\n"
-                response += user_info
-            button = InlineKeyboardMarkup(
-                [[    
-                   InlineKeyboardButton("OVERALL", callback_data="overall"),
-                ]])
-            await message.reply_photo(photo=pic, caption=response, reply_markup=button)
-        else:
-            await message.reply_text("No data available for today.")
-    else:
-        await message.reply_text("No data available for today.")
+    plt.tight_layout()
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format="png")
+    buffer.seek(0)
+    plt.close()
+    return buffer
 
+# ========== Leaderboard Builder ==========
+async def get_leaderboard(chat_id, mode):
+    query = {}
 
+    if mode == "today":
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        query["date"] = today
+    elif mode == "week":
+        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        query["date"] = {"$gte": one_week_ago.strftime("%Y-%m-%d")}
 
+    query["chat_id"] = chat_id
+
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$user_id", "count": {"$sum": "$count"}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+
+    results = list(messages_col.aggregate(pipeline))
+    leaderboard = []
+
+    for r in results:
+        try:
+            user = await app.get_users(r["_id"])
+            name = user.mention
+        except:
+            name = f"`{r['_id']}`"
+        leaderboard.append({"name": name, "count": r["count"]})
+
+    return leaderboard
+
+# ========== /rankings Command ==========
 @app.on_message(filters.command("rankings"))
-async def ranking(_, message):
-    top_members = collection.find().sort("total_messages", -1).limit(10)
-    
-    response = "**📈 LEADERBOARD**\n"
-    for idx, member in enumerate(top_members, start=1):
-        user_id = member["_id"]
-        total_messages = member["total_messages"]
-        try:
-            user_name = (await app.get_users(user_id)).first_name
-        except:
-            user_name = "Unknown"
-        
-        user_info = f"**{idx}**. {user_name} • {total_messages}\n"
-        response += user_info 
-    button = InlineKeyboardMarkup(
-            [[    
-               InlineKeyboardButton("TODAY", callback_data="today"),
-            ]])
-    await message.reply_photo(photo=pic, caption=response, reply_markup=button)
+async def rankings_cmd(_, message: Message):
+    await send_leaderboard(message, "overall")
 
+# ========== Callback Query Handlers ==========
+@app.on_callback_query(filters.regex("^(today|overall|week)$"))
+async def leaderboard_callback(_, query: CallbackQuery):
+    mode = query.data
+    await send_leaderboard(query.message, mode, edit=True)
 
+# ========== Message Sender ==========
+async def send_leaderboard(message_or_msg, mode, edit=False):
+    chat_id = message_or_msg.chat.id
+    leaderboard = await get_leaderboard(chat_id, mode)
 
-# -------------------- regex -------------------- # 
+    if not leaderboard:
+        text = "No data available for this period."
+        if edit:
+            return await message_or_msg.edit_text(text)
+        return await message_or_msg.reply(text)
 
-@app.on_callback_query(filters.regex("today"))
-async def today_rank(_, query):
-    chat_id = query.message.chat.id
-    if chat_id in today:
-        users_data = [(user_id, user_data["total_messages"]) for user_id, user_data in today[chat_id].items()]
-        sorted_users_data = sorted(users_data, key=lambda x: x[1], reverse=True)[:10]
-        
-        if sorted_users_data:
-            response = "**📈 LEADERBOARD TODAY**\n"
-            for idx, (user_id, total_messages) in enumerate(sorted_users_data, start=1):
-                try:
-                    user_name = (await app.get_users(user_id)).first_name
-                except:
-                    user_name = "Unknown"
-                user_info = f"**{idx}**. {user_name} • {total_messages}\n"
-                response += user_info
-            button = InlineKeyboardMarkup(
-                [[    
-                   InlineKeyboardButton("OVERALL", callback_data="overall"),
-                ]])
-            await query.message.edit_text(response, reply_markup=button)
-        else:
-            await query.answer("No data available for today.")
+    # Generate chart
+    chart = generate_bar_chart(leaderboard, f"{mode.capitalize()} Leaderboard")
+
+    # Text leaderboard
+    caption = f"📈 **{mode.capitalize()} Leaderboard**\n\n"
+    for idx, item in enumerate(leaderboard, start=1):
+        caption += f"**{idx}.** {item['name']} • `{item['count']}` messages\n"
+
+    # Buttons
+    buttons = [
+        [
+            InlineKeyboardButton("Overall ✅" if mode == "overall" else "Overall", callback_data="overall"),
+            InlineKeyboardButton("Today ✅" if mode == "today" else "Today", callback_data="today"),
+            InlineKeyboardButton("Week ✅" if mode == "week" else "Week", callback_data="week"),
+        ]
+    ]
+    markup = InlineKeyboardMarkup(buttons)
+
+    if edit:
+        await message_or_msg.delete()
+        await message_or_msg.reply_photo(chart, caption=caption, reply_markup=markup)
     else:
-        await query.answer("No data available for today.")
-
-
-
-@app.on_callback_query(filters.regex("overall"))
-async def overall_rank(_, query):
-    top_members = collection.find().sort("total_messages", -1).limit(10)
-    
-    response = "**📈 LEADERBOARD**\n"
-    for idx, member in enumerate(top_members, start=1):
-        user_id = member["_id"]
-        total_messages = member["total_messages"]
-        try:
-            user_name = (await app.get_users(user_id)).first_name
-        except:
-            user_name = "Unknown"
-        
-        user_info = f"**{idx}**. {user_name} • {total_messages}\n"
-        response += user_info 
-    button = InlineKeyboardMarkup(
-            [[    
-               InlineKeyboardButton("TODAY", callback_data="today"),
-            ]])
-    await query.message.edit_text(response, reply_markup=button)
-
-
-
-
-    
-
+        await message_or_msg.reply_photo(chart, caption=caption, reply_markup=markup)
