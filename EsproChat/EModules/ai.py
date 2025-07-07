@@ -4,10 +4,10 @@ from pyrogram.enums import ChatAction
 from pyrogram.types import Message
 import g4f
 
-# 🔁 Bot username without @ (must match your bot)
-BOT_USERNAME = "MissEsproBot"
+# 🔁 Set your bot username (without @)
+BOT_USERNAME = "MissEsproBot"  # Change this to your actual bot username
 
-# ✅ Check if the bot was replied to or mentioned
+# ✅ Helper: check if bot is mentioned or replied to in group
 def is_mentioned_or_replied(message: Message):
     if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_self:
         return True
@@ -17,8 +17,8 @@ def is_mentioned_or_replied(message: Message):
                 return True
     return False
 
-# ✅ Message handler for all chat types
-@app.on_message(filters.text)  # Removed ~filters.edited (crash fix)
+# ✅ Main handler
+@app.on_message(filters.text & ~filters.regex(r"^/"))  # ❌ Ignore commands starting with '/'
 async def chatgpt_handler(client, message: Message):
     if message.chat.type == "private":
         pass
@@ -29,6 +29,7 @@ async def chatgpt_handler(client, message: Message):
     await message.reply_chat_action(ChatAction.TYPING)
 
     try:
+        # 💬 Prompt format
         prompt = f"""
 Tum ek real insaan ho. Har reply casual, short, aur friendly Hindi me do.
 Zyada lamba mat likho. Normal dost jaise baat karo.
@@ -37,12 +38,10 @@ User: {message.text}
 Bot:
 """
 
-        # ✅ Using default working model
+        # ✅ Safe model with fallback
         response = g4f.ChatCompletion.create(
             model=g4f.models.default,
-            messages=[
-                {"role": "user", "content": prompt},
-            ],
+            messages=[{"role": "user", "content": prompt}],
         )
 
         await message.reply(response.strip())
