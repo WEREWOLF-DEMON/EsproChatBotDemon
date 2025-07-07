@@ -13,3 +13,4 @@ telegram
 Pillow
 aiohttp
 matplotlib
+g4f
