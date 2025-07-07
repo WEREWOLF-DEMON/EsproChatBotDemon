@@ -5,7 +5,7 @@ from pyrogram.types import Message
 import g4f
 from pymongo import MongoClient
 
-# ✅ Config
+# 🔧 Bot config
 BOT_USERNAME = "MissEsproBot"  # 👈 without @
 OWNER_ID = 7666870729  # 👈 Replace with your Telegram user ID
 MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro"  # 👈 Replace this
@@ -14,7 +14,7 @@ MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retr
 mongo = MongoClient(MONGO_URI)
 chatdb = mongo.ChatDB.chat_data
 
-# ❌ Agar message kisi aur ko reply/mention karta hai (bot ko chhodkar), to ignore karo
+# ❌ Check if message is replying/mentioning someone else (except bot)
 def is_message_for_someone_else(message: Message):
     if message.reply_to_message:
         replied_user = message.reply_to_message.from_user
@@ -28,8 +28,8 @@ def is_message_for_someone_else(message: Message):
                     return True
     return False
 
-# ✅ Main handler
-@app.on_message(filters.text & ~filters.regex(r"^/"))  # Ignore commands
+# ✅ Chat handler (learn + respond)
+@app.on_message(filters.text & ~filters.regex(r"^/"))
 async def smart_bot_handler(client, message: Message):
     if message.chat.type == "private":
         pass
@@ -42,37 +42,38 @@ async def smart_bot_handler(client, message: Message):
     try:
         user_input = message.text.strip().lower()
 
-        # 🔎 Check MongoDB
+        # 🔎 MongoDB check
         data = chatdb.find_one({"question": user_input})
         if data:
             await message.reply(data["answer"])
             return
 
-        # 💬 Prompt for GPT
+        # 💬 Prompt
         prompt = f"""
 Tum ek reyal ladki ho jitna ek ladki ke aandar hota hai tumare aandar hona chahiye Har reply 1 ya 2 line ka hi do. Friendly aur normal Hindi me baat karo.
 
 User: {message.text}
 Espro:
 """
+
+        # 🧠 GPT response
         response = g4f.ChatCompletion.create(
-            model=g4f.models.gpt_35_turbo,
+            model=g4f.models.gpt_3_5_turbo,  # ✅ Use correct model
             messages=[{"role": "user", "content": prompt}],
         )
 
         final_answer = response.strip()
 
-        # ✅ Save to MongoDB
+        # 💾 Save to MongoDB
         chatdb.insert_one({"question": user_input, "answer": final_answer})
         await message.reply(final_answer)
 
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
 
-# ✅ /teach command to manually teach the bot
+# ✅ /teach command (manual training)
 @app.on_message(filters.command("teach") & filters.text)
 async def teach_command(client, message: Message):
-    # ✅ Check if sender is owner or admin
     is_owner = message.from_user.id == OWNER_ID
     is_admin = False
 
@@ -87,16 +88,14 @@ async def teach_command(client, message: Message):
         return await message.reply("❌ Sirf owner ya admin hi /teach use kar sakta hai.")
 
     try:
-        # ✅ Parse question | answer
         text = message.text.split(" ", 1)[1]
         if "|" not in text:
-            return await message.reply("❌ Format galat hai!\nUse this format:\n`/teach question | answer`")
+            return await message.reply("❌ Format:\n`/teach question | answer`")
 
         question, answer = text.split("|", 1)
         question = question.strip().lower()
         answer = answer.strip()
 
-        # ✅ Update or insert
         chatdb.update_one(
             {"question": question},
             {"$set": {"answer": answer}},
