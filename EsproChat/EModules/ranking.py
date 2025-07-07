@@ -116,11 +116,11 @@ async def send_leaderboard(message_or_msg, mode, edit=False):
     # Buttons
     buttons = [
     [
-        InlineKeyboardButton("®️Overall ✅" if mode == "overall" else "Overall", callback_data="overall"),
+        InlineKeyboardButton("Overall ✅" if mode == "overall" else "Overall", callback_data="overall"),
     ],
     [
-        InlineKeyboardButton("®️Today ✅" if mode == "today" else "Today", callback_data="today"),
-        InlineKeyboardButton("®️Week ✅" if mode == "week" else "Week", callback_data="week"),
+        InlineKeyboardButton("Today ✅" if mode == "today" else "Today", callback_data="today"),
+        InlineKeyboardButton("Week ✅" if mode == "week" else "Week", callback_data="week"),
     ]
     ]
     markup = InlineKeyboardMarkup(buttons)
