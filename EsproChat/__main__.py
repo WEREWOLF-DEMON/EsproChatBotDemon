@@ -3,7 +3,7 @@ import importlib
 from pyrogram import idle
 from EsproChat import app
 from pyrogram.types import BotCommand
-from EsproChat.EModules import ALL_MODULES
+from EsproChat.EModules import ALL_EMODULES
 from config import LOGGER_ID, SETCMD
 
 loop = asyncio.get_event_loop()
@@ -14,7 +14,7 @@ loop = asyncio.get_event_loop()
 
 async def Murali():
     await app.start()
-    for all_module in ALL_MODULES:
+    for all_module in ALL_EMODULES:
         importlib.import_module("EsproChat.EModules." + all_module)
     print("𝐁𝐎𝐓 𝐇𝐀𝐒 𝐁𝐄𝐄𝐍 𝐒𝐓𝐀𝐑𝐓𝐄𝐃 ✨")
     print("𝐃𝐨𝐧𝐭 𝐅𝐨𝐫𝐠𝐞𝐭 𝐓𝐨 𝐕𝐢𝐬𝐢𝐭 @EsproUpdate ⭐")
