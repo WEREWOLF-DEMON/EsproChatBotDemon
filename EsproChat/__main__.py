@@ -27,7 +27,8 @@ async def Murali():
                     BotCommand("ping", "ᴄʜᴇᴄᴋ ʙᴏᴛ ᴘɪɴɢ"),
                     BotCommand("chatbot", "ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪꜱᴀʙʟᴇ ᴄʜᴀᴛʙᴏᴛ "),
                     BotCommand("start", "ꜱᴛᴀʀᴛ ᴄʜɪᴋᴜ ʙᴏᴛ"),
-                    BotCommand("tgm", "ᴜᴘʟᴏᴀᴅ ꜰɪʟᴇ ᴛᴏ ᴛᴇʟᴇɢʀᴀᴘʜ ")
+                    BotCommand("tgm", "ᴜᴘʟᴏᴀᴅ ꜰɪʟᴇ ᴛᴏ ᴛᴇʟᴇɢʀᴀᴘʜ "),
+                    BotCommand("rankings", "ᴠɪᴇᴡ ᴛʜᴇ ɢʀᴏᴜᴘ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ ")
                 ]
             )
         except Exception as e:
