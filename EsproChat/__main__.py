@@ -1,41 +1,40 @@
 import asyncio
 import importlib
+import traceback
 from pyrogram import idle
-from EsproChat import app
 from pyrogram.types import BotCommand
+from EsproChat import app
 from EsproChat.EModules import ALL_EModules
 from config import LOGGER_ID, SETCMD
 
-loop = asyncio.get_event_loop()
-
-# all Fixed
-
-
-
 async def Murali():
     await app.start()
+
     for all_module in ALL_EModules:
-        importlib.import_module("EsproChat.EModules." + all_module)
-    print("𝐂𝐇𝐈𝐊𝐔 𝐁𝐎𝐓 𝐇𝐀𝐒 𝐁𝐄𝐄𝐍 𝐒𝐓𝐀𝐑𝐓𝐄𝐃 ✨")
-    print("𝐃𝐨𝐧𝐭 𝐅𝐨𝐫𝐠𝐞𝐭 𝐓𝐨 𝐕𝐢𝐬𝐢𝐭 @ ⭐")
+        try:
+            importlib.import_module("EsproChat.EModules." + all_module)
+        except Exception as err:
+            print(f"Failed to import {all_module}: {err}")
+
+    print("CHIKU BOT HAS BEEN STARTED")
+    print("Join our Channel: @EsproUpdate")
+
     if SETCMD:
         try:
             await app.set_bot_commands(
                 [
-                    BotCommand("alive", "ᴄʜᴇᴄᴋ ʙᴏᴛ ɪꜱ ᴀʟɪᴠᴇ ᴏʀ ᴅᴇᴀᴅ"),
-                    BotCommand("id", "ᴄʜᴇᴄᴋ ʏᴏᴜʀ ɪᴅ"),
-                    BotCommand("ping", "ᴄʜᴇᴄᴋ ʙᴏᴛ ᴘɪɴɢ"),
-                    BotCommand("chatbot", "ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪꜱᴀʙʟᴇ ᴄʜᴀᴛʙᴏᴛ "),
-                    BotCommand("start", "ꜱᴛᴀʀᴛ ᴄʜɪᴋᴜ ʙᴏᴛ"),
-                    BotCommand("tgm", "ᴜᴘʟᴏᴀᴅ ꜰɪʟᴇ ᴛᴏ ᴛᴇʟᴇɢʀᴀᴘʜ ")
+                    BotCommand("alive", "check bot is alive or dead"),
+                    BotCommand("id", "check your id"),
+                    BotCommand("ping", "check bot ping"),
+                    BotCommand("chatbot", "enable or disable chatbot"),
+                    BotCommand("start", "start chiku bot"),
+                    BotCommand("tgm", "upload file to telegra.ph")
                 ]
             )
-        except Exception as e:
-            print(f"Failed to set bot commands: {e}")
-            pass
+        except Exception:
+            traceback.print_exc()
+
     await idle()
-    
+
 if __name__ == "__main__":
-    loop.run_until_complete(Murali())
-
-
+    asyncio.run(Murali())
