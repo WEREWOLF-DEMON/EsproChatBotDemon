@@ -6,7 +6,7 @@ import g4f
 from g4f.models import gpt_4
 from pymongo import MongoClient
 import asyncio
-import re  # 👈 Required for regex
+import re
 
 # 🔧 Config
 BOT_USERNAME = "MissEsproBot"  # without @
@@ -24,10 +24,10 @@ async def smart_bot_handler(client, message: Message):
     if message.from_user and message.from_user.is_bot:
         return
 
+    # ✅ Check chat type
     if message.chat.type == "private":
-        pass  # ✅ Always reply in private
+        pass  # Always respond in private
     elif message.chat.type in ("group", "supergroup"):
-        # ✅ Only reply if bot is mentioned or replied to
         bot_user = await client.get_me()
         is_mentioned = f"@{BOT_USERNAME.lower()}" in message.text.lower()
         is_replied_to_bot = (
@@ -36,13 +36,11 @@ async def smart_bot_handler(client, message: Message):
             message.reply_to_message.from_user.id == bot_user.id
         )
         if not (is_mentioned or is_replied_to_bot):
-            return  # ❌ Ignore if bot not mentioned or not replied to
+            return  # ❌ Ignore messages not meant for bot
 
-
-
-# ❌ Ignore messages containing any URL/link
-if re.search(r'https?://|www\.', message.text.lower()):
-    return
+    # ❌ Ignore messages containing links
+    if re.search(r'https?://|www\.', message.text.lower()):
+        return
 
     await message.reply_chat_action(ChatAction.TYPING)
     await asyncio.sleep(min(3, max(1, len(message.text) * 0.03)))  # Typing delay
@@ -50,7 +48,7 @@ if re.search(r'https?://|www\.', message.text.lower()):
     try:
         user_input = message.text.strip().lower()
 
-        # 🔍 Check MongoDB first
+        # 🔍 Check in MongoDB
         data = chatdb.find_one({"question": user_input})
         if data:
             return await message.reply(data["answer"])
@@ -71,6 +69,7 @@ Espro:
         final_answer = response.strip()
 
         if final_answer:
+            # ✅ Save reply
             chatdb.update_one(
                 {"question": user_input},
                 {"$set": {"answer": final_answer}},
@@ -83,12 +82,13 @@ Espro:
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
 
-# ✅ /teach command to teach manually
+# ✅ /teach command to manually teach bot
 @app.on_message(filters.command("teach") & filters.text)
 async def teach_command(client, message: Message):
     is_owner = message.from_user.id == OWNER_ID
     is_admin = False
 
+    # ✅ Check admin
     if message.chat.type != "private":
         try:
             member = await client.get_chat_member(message.chat.id, message.from_user.id)
