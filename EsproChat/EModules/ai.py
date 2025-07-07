@@ -5,21 +5,22 @@ from pyrogram.types import Message
 import g4f
 from pymongo import MongoClient
 
-# ✅ Bot config
+# ✅ Bot Config
 BOT_USERNAME = "MissEsproBot"  # 👈 apna bot username
 OWNER_ID = 7666870729      # 👈 replace with actual owner ID
 
-# ✅ MongoDB setup
+
+# ✅ MongoDB Setup (Replace with your actual MongoDB URI)
 mongo = MongoClient("mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro")
 db = mongo["ChatDB"]
 replies = db["TrainedReplies"]
 
-# ✅ Trained reply fetcher
+# ✅ Get trained reply if available
 def get_trained_reply(query: str):
     result = replies.find_one({"question": query.lower()})
     return result["answer"] if result else None
 
-# ✅ Check if bot is mentioned or replied to (for groups)
+# ✅ Check if bot is mentioned or replied (in groups)
 def is_mentioned_or_replied(message: Message):
     if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_self:
         return True
@@ -29,17 +30,18 @@ def is_mentioned_or_replied(message: Message):
                 return True
     return False
 
-# ✅ Main chat handler
+# ✅ Chat Handler
 @app.on_message(filters.text & ~filters.regex(r"^/"))
 async def chat_handler(client, message: Message):
-    if message.chat.type == "group" or message.chat.type == "supergroup":
+    if message.chat.type in ("group", "supergroup"):
         if not is_mentioned_or_replied(message):
-            return  # Ignore if bot not tagged/replied to in group
+            return
 
     await message.reply_chat_action(ChatAction.TYPING)
+
     user_text = message.text.strip().lower()
 
-    # ✅ Owner's teach command
+    # ✅ Owner Teaching Logic
     if message.from_user.id == OWNER_ID and user_text.startswith("teach:"):
         try:
             # Format: teach: question | answer
@@ -52,25 +54,29 @@ async def chat_handler(client, message: Message):
             )
             return await message.reply("✅ Sikha diya!")
         except:
-            return await message.reply("❌ Format galat hai. Sahi format:\n`teach: question | answer`")
+            return await message.reply("❌ Format galat hai. Use:\n`teach: question | answer`")
 
-    # ✅ Check if trained reply exists
+    # ✅ Check for trained reply
     trained = get_trained_reply(user_text)
     if trained:
         return await message.reply(trained)
 
-    # ✅ Fallback: AI response
+    # ✅ Fallback to AI reply
     try:
         prompt = f"""
-Tum ek real dost ho. Har reply chhota, friendly aur Hindi me do. Formal mat bano.
+Tum ek real dost ho. Har reply chhota, friendly aur Hindi me do. Zyada formal mat bano.
 
 User: {message.text}
 Bot:
 """
         response = g4f.ChatCompletion.create(
-            model=g4f.models.gpt_3_5_turbo,
+            model=g4f.models.default,  # ✅ Or replace with available model like gpt_4, gemini, etc.
             messages=[{"role": "user", "content": prompt}],
         )
+
+        if not response or not response.strip():
+            raise Exception("Empty response from model.")
+
         await message.reply(response.strip())
 
     except Exception as e:
