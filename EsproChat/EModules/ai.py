@@ -32,15 +32,14 @@ def is_message_for_someone_else(message: Message):
                     return True
     return False
 
-# ✅ Smart chat handler
-@app.on_message(filters.text & ~filters.command(["teach"]))
+# ✅ Main smart chat handler
+@app.on_message(filters.text & ~filters.regex(r"^/"))
 async def smart_bot_handler(client, message: Message):
-    # ❌ Ignore if message is for someone else
-    if is_message_for_someone_else(message):
-        return
-
-    if not message.text:
-        return
+    if message.chat.type == "private":
+        pass
+    elif message.chat.type in ("group", "supergroup"):
+        if is_message_for_someone_else(message):
+            return  # ❌ Ignore group messages that tag or reply to others
 
     await message.reply_chat_action(ChatAction.TYPING)
     await asyncio.sleep(1)
@@ -55,14 +54,15 @@ async def smart_bot_handler(client, message: Message):
 
         # 🧠 GPT fallback prompt
         prompt = f"""
-Tum ek sweet, funny aur real ladki ho. Har reply short aur Hindi-English mix mein do, jaise real girl karti hai. Sirf 1-2 line.
+Tum ek real ladki ho. Har reply chhoti aur friendly Hindi mein do. Sirf 1-2 line likho.
 
 User: {message.text}
 Espro:
 """
 
+        # GPT reply
         response = g4f.ChatCompletion.create(
-            model=g4f.models.default,
+            model=g4f.models.gpt_4,  # Safe model
             messages=[{"role": "user", "content": prompt}],
         )
 
@@ -82,30 +82,16 @@ Espro:
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
 
-
-# ✅ Manual teach command (silent in groups)
+# ✅ /teach command (Only Owner Allowed)
 @app.on_message(filters.command("teach") & filters.text)
 async def teach_command(client, message: Message):
-    is_owner = message.from_user.id == OWNER_ID
-    is_admin = False
-
-    if message.chat.type != "private":
-        try:
-            member = await client.get_chat_member(message.chat.id, message.from_user.id)
-            is_admin = member.status in ("administrator", "creator")
-        except:
-            pass
-
-    if not (is_owner or is_admin or message.chat.type == "private"):
-        return  # ❌ Ignore silently if not allowed
+    if message.from_user.id != OWNER_ID:
+        return await message.reply("❌ Sirf bot owner hi /teach use kar sakta hai.")
 
     try:
         text = message.text.split(" ", 1)[1]
         if "|" not in text:
-            if message.chat.type == "private":
-                return await message.reply("❌ Format:\n`/teach question | answer`")
-            else:
-                return  # ❌ Group me silent
+            return await message.reply("❌ Format:\n`/teach question | answer`")
 
         question, answer = text.split("|", 1)
         question = question.strip().lower()
@@ -117,9 +103,7 @@ async def teach_command(client, message: Message):
             upsert=True
         )
 
-        if message.chat.type == "private":
-            await message.reply("✅ Bot ne naya jawab yaad kar liya!")
+        await message.reply("✅ Bot ne naya jawab yaad kar liya!")
 
     except Exception as e:
-        if message.chat.type == "private":
-            await message.reply("😓 Error:\n" + str(e))
+        await message.reply("😓 Error:\n" + str(e))
