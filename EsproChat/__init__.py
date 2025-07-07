@@ -9,7 +9,7 @@ import pymongo
 from pyrogram import Client
 from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
 from pyrogram.enums import ParseMode, ChatMemberStatus
-# from Abg import patch
+from Abg import patch
 
 loop = asyncio.get_event_loop()
 load_dotenv()
