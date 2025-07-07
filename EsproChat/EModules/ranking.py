@@ -13,7 +13,7 @@ from pyrogram.types import (
 from EsproChat import app
 from config import MONGO_URL
 
-# 🔕 Suppress font warnings
+# Ignore matplotlib font warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # MongoDB Setup
@@ -21,7 +21,7 @@ mongo_client = MongoClient(MONGO_URL)
 db = mongo_client["EsproMain"]
 messages_col = db["messages"]
 
-# 📥 Track messages per day per user
+# ✅ Track each message daily per user
 @app.on_message(filters.group, group=6)
 async def count_messages(_, message: Message):
     if not message.from_user:
@@ -36,12 +36,11 @@ async def count_messages(_, message: Message):
         upsert=True
     )
 
-# 🎨 Modern Dark Chart Generator
+# 🎨 Generate leaderboard image
 def generate_bar_chart(data: list, title: str):
-    names = [item["name"][:10] + "..." if len(item["name"]) > 13 else item["name"] for item in data]
+    names = [item["name"][:12] + "..." if len(item["name"]) > 15 else item["name"] for item in data]
     counts = [item["count"] for item in data]
 
-    # Dark theme
     plt.rcParams.update({
         "text.color": "white",
         "axes.labelcolor": "white",
@@ -60,9 +59,7 @@ def generate_bar_chart(data: list, title: str):
     ax.set_xlabel("Messages", fontsize=12)
     ax.grid(True, axis='x', linestyle="--", alpha=0.3)
 
-    # Add labels
     for bar in bars:
-        bar.set_height(0.6)
         width = bar.get_width()
         ax.text(width + 3, bar.get_y() + bar.get_height() / 2, str(width),
                 va='center', color='white', fontsize=10)
@@ -71,11 +68,12 @@ def generate_bar_chart(data: list, title: str):
 
     buffer = io.BytesIO()
     plt.savefig(buffer, format="png", dpi=300, facecolor=fig.get_facecolor())
+    buffer.name = "leaderboard.png"
     buffer.seek(0)
     plt.close()
     return buffer
 
-# 📊 Get leaderboard data
+# 📊 Fetch leaderboard data
 async def get_leaderboard(chat_id, mode):
     query = {"chat_id": chat_id}
 
@@ -101,7 +99,11 @@ async def get_leaderboard(chat_id, mode):
             name = user.first_name or "User"
         except:
             name = str(r["_id"])
-        leaderboard.append({"name": name, "count": r["count"]})
+        leaderboard.append({
+            "name": name,
+            "user_id": r["_id"],
+            "count": r["count"]
+        })
 
     return leaderboard
 
@@ -115,13 +117,12 @@ async def rankings_cmd(_, message: Message):
 
     await send_leaderboard(message, "overall")  # 📊 Rankings send
 
-# 🔁 Callback query: Overall / Today / Week
+# 🔁 Callback: overall, today, week
 @app.on_callback_query(filters.regex("^(today|overall|week)$"))
 async def leaderboard_callback(_, query: CallbackQuery):
-    mode = query.data
-    await send_leaderboard(query.message, mode, edit=True)
+    await send_leaderboard(query.message, query.data, edit=True)
 
-# 📤 Send leaderboard message
+# 📤 Send chart + text leaderboard
 async def send_leaderboard(message_or_msg, mode, edit=False):
     chat_id = message_or_msg.chat.id
     leaderboard = await get_leaderboard(chat_id, mode)
@@ -132,26 +133,22 @@ async def send_leaderboard(message_or_msg, mode, edit=False):
             return await message_or_msg.edit_text(text)
         return await message_or_msg.reply(text)
 
-    # Chart
     chart = generate_bar_chart(leaderboard, mode.upper())
 
-    # Text
     caption = f"📈 **{mode.capitalize()} Leaderboard**\n\n"
-    total_count = sum(item['count'] for item in leaderboard)
+    total_count = sum(item["count"] for item in leaderboard)
 
     for idx, item in enumerate(leaderboard, start=1):
         try:
-            user = await app.get_users(item['name'])
+            user = await app.get_users(item["user_id"])
             mention = user.mention
         except:
-            mention = item['name']
-        caption += f"**{idx}.** {mention} • `{item['count']}`\n"
+            mention = f"`{item['user_id']}`"
+        caption += f"**{idx}.** {mention} • `{item['count']}` \n"
 
     caption += f"\n📩 **Total messages:** `{total_count}`"
 
-    # Buttons
     buttons = [
-        
     [
         InlineKeyboardButton("Overall ✅" if mode == "overall" else "Overall", callback_data="overall"),
     ],
@@ -159,10 +156,9 @@ async def send_leaderboard(message_or_msg, mode, edit=False):
         InlineKeyboardButton("Today ✅" if mode == "today" else "Today", callback_data="today"),
         InlineKeyboardButton("Week ✅" if mode == "week" else "Week", callback_data="week"),
     ]
-             ]
+    ]
     markup = InlineKeyboardMarkup(buttons)
 
-    # Send message
     if edit:
         await message_or_msg.delete()
         await message_or_msg.reply_photo(chart, caption=caption, reply_markup=markup)
