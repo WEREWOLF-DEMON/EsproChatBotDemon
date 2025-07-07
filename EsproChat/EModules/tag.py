@@ -198,7 +198,7 @@ async def tag_all_members(client, message):
         if chat_id in spam_chats:
             spam_chats.remove(chat_id)
 
-@app.on_message(filters.command(["tagoff"]))
+@app.on_message(filters.command(["ritikoff"]))
 async def stop_tagging(client, message):
     chat_id = message.chat.id
 
