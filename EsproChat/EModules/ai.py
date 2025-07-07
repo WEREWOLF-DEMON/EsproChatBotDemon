@@ -5,79 +5,105 @@ from pyrogram.types import Message
 import g4f
 from pymongo import MongoClient
 
-# ✅ Bot Config
-BOT_USERNAME = "MissEsproBot"  # 👈 apna bot username
-OWNER_ID = 7666870729      # 👈 replace with actual owner ID
+# ✅ Config
+BOT_USERNAME = "MissEsproBot"  # 👈 without @
+OWNER_ID = 7666870729  # 👈 Replace with your Telegram user ID
+MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro"  # 👈 Replace this
 
+# ✅ MongoDB setup
+mongo = MongoClient(MONGO_URI)
+chatdb = mongo.ChatDB.chat_data
 
-# ✅ MongoDB Setup (Replace with your actual MongoDB URI)
-mongo = MongoClient("mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro")
-db = mongo["ChatDB"]
-replies = db["TrainedReplies"]
-
-# ✅ Get trained reply if available
-def get_trained_reply(query: str):
-    result = replies.find_one({"question": query.lower()})
-    return result["answer"] if result else None
-
-# ✅ Check if bot is mentioned or replied (in groups)
-def is_mentioned_or_replied(message: Message):
-    if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_self:
-        return True
+# ❌ Agar message kisi aur ko reply/mention karta hai (bot ko chhodkar), to ignore karo
+def is_message_for_someone_else(message: Message):
+    if message.reply_to_message:
+        replied_user = message.reply_to_message.from_user
+        if replied_user and not replied_user.is_self:
+            return True
     if message.entities:
         for entity in message.entities:
-            if entity.type == "mention" and f"@{BOT_USERNAME.lower()}" in message.text.lower():
-                return True
+            if entity.type == "mention":
+                mention_text = message.text[entity.offset : entity.offset + entity.length]
+                if mention_text.lower() != f"@{BOT_USERNAME.lower()}":
+                    return True
     return False
 
-# ✅ Chat Handler
-@app.on_message(filters.text & ~filters.regex(r"^/"))
-async def chat_handler(client, message: Message):
-    if message.chat.type in ("group", "supergroup"):
-        if not is_mentioned_or_replied(message):
+# ✅ Main handler
+@app.on_message(filters.text & ~filters.regex(r"^/"))  # Ignore commands
+async def smart_bot_handler(client, message: Message):
+    if message.chat.type == "private":
+        pass
+    elif message.chat.type in ("group", "supergroup"):
+        if is_message_for_someone_else(message):
             return
 
     await message.reply_chat_action(ChatAction.TYPING)
 
-    user_text = message.text.strip().lower()
-
-    # ✅ Owner Teaching Logic
-    if message.from_user.id == OWNER_ID and user_text.startswith("teach:"):
-        try:
-            # Format: teach: question | answer
-            _, pair = user_text.split(":", 1)
-            question, answer = map(str.strip, pair.split("|"))
-            replies.update_one(
-                {"question": question.lower()},
-                {"$set": {"answer": answer}},
-                upsert=True,
-            )
-            return await message.reply("✅ Sikha diya!")
-        except:
-            return await message.reply("❌ Format galat hai. Use:\n`teach: question | answer`")
-
-    # ✅ Check for trained reply
-    trained = get_trained_reply(user_text)
-    if trained:
-        return await message.reply(trained)
-
-    # ✅ Fallback to AI reply
     try:
-        prompt = f"""  
-Tum ek ladki real dost ho. Har reply chhota, friendly aur Hindi me do. Zyada formal mat bano.  
-  
-User: {message.text}  
-Espro:  
-"""  
+        user_input = message.text.strip().lower()
+
+        # 🔎 Check MongoDB
+        data = chatdb.find_one({"question": user_input})
+        if data:
+            await message.reply(data["answer"])
+            return
+
+        # 💬 Prompt for GPT
+        prompt = f"""
+Tum ek reyal ladki ho jitna ek ladki ke aandar hota hai tumare aandar hona chahiye Har reply 1 ya 2 line ka hi do. Friendly aur normal Hindi me baat karo.
+
+User: {message.text}
+Espro:
+"""
         response = g4f.ChatCompletion.create(
-            model=g4f.models.default,  # ✅ Or replace with available model like gpt_4, gemini, etc.
+            model=g4f.models.gpt_35_turbo,
             messages=[{"role": "user", "content": prompt}],
         )
 
-        if not response or not response.strip():
-            raise Exception("Empty response from model.")
+        final_answer = response.strip()
 
-        await message.reply(response.strip())
+        # ✅ Save to MongoDB
+        chatdb.insert_one({"question": user_input, "answer": final_answer})
+        await message.reply(final_answer)
+
+    except Exception as e:
+        await message.reply("😓 Error:\n" + str(e))
+
+# ✅ /teach command to manually teach the bot
+@app.on_message(filters.command("teach") & filters.text)
+async def teach_command(client, message: Message):
+    # ✅ Check if sender is owner or admin
+    is_owner = message.from_user.id == OWNER_ID
+    is_admin = False
+
+    if message.chat.type != "private":
+        try:
+            member = await client.get_chat_member(message.chat.id, message.from_user.id)
+            is_admin = member.status in ("administrator", "creator")
+        except:
+            pass
+
+    if not (is_owner or is_admin or message.chat.type == "private"):
+        return await message.reply("❌ Sirf owner ya admin hi /teach use kar sakta hai.")
+
+    try:
+        # ✅ Parse question | answer
+        text = message.text.split(" ", 1)[1]
+        if "|" not in text:
+            return await message.reply("❌ Format galat hai!\nUse this format:\n`/teach question | answer`")
+
+        question, answer = text.split("|", 1)
+        question = question.strip().lower()
+        answer = answer.strip()
+
+        # ✅ Update or insert
+        chatdb.update_one(
+            {"question": question},
+            {"$set": {"answer": answer}},
+            upsert=True
+        )
+
+        await message.reply("✅ Bot ne naya jawab yaad kar liya!")
 
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
