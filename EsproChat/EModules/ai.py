@@ -4,17 +4,18 @@ from pyrogram.enums import ChatAction
 from pyrogram.types import Message
 import g4f
 from pymongo import MongoClient
+import asyncio
 
-# 🔧 Bot config
-BOT_USERNAME = "MissEsproBot"  # 👈 without @
-OWNER_ID = 7666870729  # 👈 Replace with your Telegram user ID
-MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro"  # 👈 Replace this
+# 🔧 Config
+BOT_USERNAME = "MissEsproBot"  # without @
+OWNER_ID = 7666870729
+MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro"
 
 # ✅ MongoDB setup
 mongo = MongoClient(MONGO_URI)
 chatdb = mongo.ChatDB.chat_data
 
-# ❌ Check if message is replying/mentioning someone else (except bot)
+# ❌ Check if replying or mentioning someone else
 def is_message_for_someone_else(message: Message):
     if message.reply_to_message:
         replied_user = message.reply_to_message.from_user
@@ -28,7 +29,7 @@ def is_message_for_someone_else(message: Message):
                     return True
     return False
 
-# ✅ Chat handler (learn + respond)
+# ✅ Main chat handler
 @app.on_message(filters.text & ~filters.regex(r"^/"))
 async def smart_bot_handler(client, message: Message):
     if message.chat.type == "private":
@@ -38,40 +39,47 @@ async def smart_bot_handler(client, message: Message):
             return
 
     await message.reply_chat_action(ChatAction.TYPING)
+    await asyncio.sleep(1)  # optional typing delay
 
     try:
         user_input = message.text.strip().lower()
 
-        # 🔎 MongoDB check
+        # 🔎 Check MongoDB
         data = chatdb.find_one({"question": user_input})
         if data:
-            await message.reply(data["answer"])
-            return
+            return await message.reply(data["answer"])
 
         # 💬 Prompt
         prompt = f"""
-Tum ek reyal ladki ho jitna ek ladki ke aandar hota hai tumare aandar hona chahiye Har reply 1 ya 2 line ka hi do. Friendly aur normal Hindi me baat karo.
+Tum ek real ladki ho, har reply chhoti aur friendly Hindi mein do. Sirf 1-2 line.
 
 User: {message.text}
 Espro:
 """
 
-        # 🧠 GPT response
+        # 🧠 GPT response using working model
         response = g4f.ChatCompletion.create(
-            model=g4f.models.gpt_3_5_turbo,  # ✅ Use correct model
+            model=g4f.models.gpt_4,  # ✅ Working model
             messages=[{"role": "user", "content": prompt}],
         )
 
         final_answer = response.strip()
 
         # 💾 Save to MongoDB
-        chatdb.insert_one({"question": user_input, "answer": final_answer})
-        await message.reply(final_answer)
+        if final_answer:
+            chatdb.update_one(
+                {"question": user_input},
+                {"$set": {"answer": final_answer}},
+                upsert=True
+            )
+            await message.reply(final_answer)
+        else:
+            await message.reply("😓 Mujhe jawab nahi mila...")
 
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
 
-# ✅ /teach command (manual training)
+# ✅ /teach command to manually teach the bot
 @app.on_message(filters.command("teach") & filters.text)
 async def teach_command(client, message: Message):
     is_owner = message.from_user.id == OWNER_ID
