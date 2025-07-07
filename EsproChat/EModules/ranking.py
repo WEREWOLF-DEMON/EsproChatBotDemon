@@ -1,24 +1,32 @@
 import io
+import warnings
 import matplotlib.pyplot as plt
-from pyrogram import filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from pymongo import MongoClient
 from datetime import datetime, timedelta
+from pymongo import MongoClient
+from pyrogram import filters
+from pyrogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
 from EsproChat import app
 from config import MONGO_URL
 
+# 🔕 Suppress matplotlib font warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+# MongoDB setup
 mongo_client = MongoClient(MONGO_URL)
 db = mongo_client["EsproMain"]
 messages_col = db["messages"]
 
-# ========== Message Tracker ==========
+# ➕ Count Messages for each user per day
 @app.on_message(filters.group, group=6)
 async def count_messages(_, message: Message):
-    user = message.from_user
-    if not user:
+    if not message.from_user:
         return
-
-    user_id = user.id
+    user_id = message.from_user.id
     chat_id = message.chat.id
     today_date = datetime.utcnow().strftime("%Y-%m-%d")
 
@@ -28,7 +36,7 @@ async def count_messages(_, message: Message):
         upsert=True
     )
 
-# ========== Bar Chart Generator ==========
+# 📊 Create Bar Chart
 def generate_bar_chart(data: list, title: str):
     names = [item["name"] for item in data]
     counts = [item["count"] for item in data]
@@ -50,9 +58,9 @@ def generate_bar_chart(data: list, title: str):
     plt.close()
     return buffer
 
-# ========== Leaderboard Builder ==========
+# 📥 Leaderboard from MongoDB
 async def get_leaderboard(chat_id, mode):
-    query = {}
+    query = {"chat_id": chat_id}
 
     if mode == "today":
         today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -60,8 +68,6 @@ async def get_leaderboard(chat_id, mode):
     elif mode == "week":
         one_week_ago = datetime.utcnow() - timedelta(days=7)
         query["date"] = {"$gte": one_week_ago.strftime("%Y-%m-%d")}
-
-    query["chat_id"] = chat_id
 
     pipeline = [
         {"$match": query},
@@ -83,18 +89,18 @@ async def get_leaderboard(chat_id, mode):
 
     return leaderboard
 
-# ========== /rankings Command ==========
+# 📌 /rankings command
 @app.on_message(filters.command("rankings"))
 async def rankings_cmd(_, message: Message):
     await send_leaderboard(message, "overall")
 
-# ========== Callback Query Handlers ==========
+# 🔁 Inline button callback: Today / Week / Overall
 @app.on_callback_query(filters.regex("^(today|overall|week)$"))
 async def leaderboard_callback(_, query: CallbackQuery):
     mode = query.data
     await send_leaderboard(query.message, mode, edit=True)
 
-# ========== Message Sender ==========
+# 🖼️ Send leaderboard with chart + caption
 async def send_leaderboard(message_or_msg, mode, edit=False):
     chat_id = message_or_msg.chat.id
     leaderboard = await get_leaderboard(chat_id, mode)
@@ -105,15 +111,19 @@ async def send_leaderboard(message_or_msg, mode, edit=False):
             return await message_or_msg.edit_text(text)
         return await message_or_msg.reply(text)
 
-    # Generate chart
+    # Chart image
     chart = generate_bar_chart(leaderboard, f"{mode.capitalize()} Leaderboard")
 
     # Text leaderboard
     caption = f"📈 **{mode.capitalize()} Leaderboard**\n\n"
+    total_count = sum(item['count'] for item in leaderboard)
+
     for idx, item in enumerate(leaderboard, start=1):
         caption += f"**{idx}.** {item['name']} • `{item['count']}` messages\n"
 
-    # Buttons
+    caption += f"\n📩 **Total messages:** `{total_count}`"
+
+    # Inline buttons
     buttons = [
     [
         InlineKeyboardButton("Overall ✅" if mode == "overall" else "Overall", callback_data="overall"),
@@ -125,6 +135,7 @@ async def send_leaderboard(message_or_msg, mode, edit=False):
     ]
     markup = InlineKeyboardMarkup(buttons)
 
+    # Send or edit message
     if edit:
         await message_or_msg.delete()
         await message_or_msg.reply_photo(chart, caption=caption, reply_markup=markup)
