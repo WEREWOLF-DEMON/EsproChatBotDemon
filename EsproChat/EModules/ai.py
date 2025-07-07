@@ -6,9 +6,8 @@ import g4f
 from pymongo import MongoClient
 
 # ✅ Bot Config
-BOT_USERNAME = "MissEsproBot"  # 👈 apna bot username
-OWNER_ID = 7666870729      # 👈 replace with actual owner ID
-
+BOT_USERNAME = "MissEsproBot"  # 👈 Apna bot username daalein
+OWNER_ID = 7666870729          # 👈 Apna Telegram user ID daalein
 
 # ✅ MongoDB Setup (Replace with your actual MongoDB URI)
 mongo = MongoClient("mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro")
@@ -30,21 +29,25 @@ def is_mentioned_or_replied(message: Message):
                 return True
     return False
 
-# ✅ Chat Handler
+# ✅ Main Chat Handler
 @app.on_message(filters.text & ~filters.regex(r"^/"))
 async def chat_handler(client, message: Message):
+    user_text = message.text.strip().lower()
+
+    # ✅ Group Chat Logic
     if message.chat.type in ("group", "supergroup"):
-        if not is_mentioned_or_replied(message):
-            return
+        if is_mentioned_or_replied(message):
+            pass  # reply allowed
+        elif message.reply_to_message and not message.reply_to_message.from_user.is_self:
+            return  # don't reply if 2 users are talking
+        else:
+            pass  # single user message, allow
 
     await message.reply_chat_action(ChatAction.TYPING)
-
-    user_text = message.text.strip().lower()
 
     # ✅ Owner Teaching Logic
     if message.from_user.id == OWNER_ID and user_text.startswith("teach:"):
         try:
-            # Format: teach: question | answer
             _, pair = user_text.split(":", 1)
             question, answer = map(str.strip, pair.split("|"))
             replies.update_one(
@@ -56,12 +59,12 @@ async def chat_handler(client, message: Message):
         except:
             return await message.reply("❌ Format galat hai. Use:\n`teach: question | answer`")
 
-    # ✅ Check for trained reply
+    # ✅ Trained reply check
     trained = get_trained_reply(user_text)
     if trained:
         return await message.reply(trained)
 
-    # ✅ Fallback to AI reply
+    # ✅ Fallback to AI
     try:
         prompt = f"""  
 Tum ek ladki real dost ho. Har reply chhota, friendly aur Hindi me do. Zyada formal mat bano.  
@@ -70,7 +73,7 @@ User: {message.text}
 Espro:  
 """  
         response = g4f.ChatCompletion.create(
-            model=g4f.models.default,  # ✅ Or replace with available model like gpt_4, gemini, etc.
+            model=g4f.models.gpt_35_turbo,  # Make sure this model exists
             messages=[{"role": "user", "content": prompt}],
         )
 
