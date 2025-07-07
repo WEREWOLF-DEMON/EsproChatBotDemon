@@ -73,7 +73,7 @@ User: {message.text}
 Espro:  
 """  
         response = g4f.ChatCompletion.create(
-            model=g4f.models.gpt_35_turbo,  # Make sure this model exists
+            model=g4f.models.default,  # ✅ safest option
             messages=[{"role": "user", "content": prompt}],
         )
 
