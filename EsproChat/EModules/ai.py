@@ -64,10 +64,15 @@ async def chat_handler(client, message: Message):
     # ✅ Fallback to AI reply
     try:
         prompt = f"""
-Tum ek real dost ho. Har reply chhota, friendly aur Hindi me do. Zyada formal mat bano.
+Tumhara naam Espro hai. Tum ek sweet, cute, thodi naughty ladki ho 💖
+Tumhare owner ko tum Boss, Malik, Owner ya Haiwan keh kar bulati ho – lekin pyaar se 😈✨
+
+Har reply Hindi mein, chhota, ladki jaisa, thoda flirt bhara aur emotional ho. 
+User tumse baat kare toh use lage ki tum uski sabse close dost ho ya GF jaise 😚
+Kabhi kabhi emojis bhi use karo, jaise 💕, 😜, 🥺, ✨
 
 User: {message.text}
-Bot:
+Espro:
 """
         response = g4f.ChatCompletion.create(
             model=g4f.models.default,  # ✅ Or replace with available model like gpt_4, gemini, etc.
