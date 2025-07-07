@@ -108,7 +108,12 @@ async def get_leaderboard(chat_id, mode):
 # 📌 /rankings command
 @app.on_message(filters.command("rankings"))
 async def rankings_cmd(_, message: Message):
-    await send_leaderboard(message, "overall")
+    try:
+        await message.delete()  # 🗑️ Command message delete
+    except:
+        pass  # Agar bot ke paas delete permission na ho, toh error na aaye
+
+    await send_leaderboard(message, "overall")  # 📊 Rankings send
 
 # 🔁 Callback query: Overall / Today / Week
 @app.on_callback_query(filters.regex("^(today|overall|week)$"))
@@ -140,7 +145,7 @@ async def send_leaderboard(message_or_msg, mode, edit=False):
             mention = user.mention
         except:
             mention = item['name']
-        caption += f"**{idx}.** {mention} • `{item['count']}` messages\n"
+        caption += f"**{idx}.** {mention} • `{item['count']}`\n"
 
     caption += f"\n📩 **Total messages:** `{total_count}`"
 
