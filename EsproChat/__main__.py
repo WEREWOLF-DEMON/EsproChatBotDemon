@@ -20,7 +20,7 @@ async def Murali():
     print("𝐃𝐨𝐧𝐭 𝐅𝐨𝐫𝐠𝐞𝐭 𝐓𝐨 𝐕𝐢𝐬𝐢𝐭 @EsproUpdate ⭐")
     if SETCMD:
         try:
-            await Chiku.set_bot_commands(
+            await app.set_bot_commands(
                 [
                     BotCommand("alive", "ᴄʜᴇᴄᴋ ʙᴏᴛ ɪꜱ ᴀʟɪᴠᴇ ᴏʀ ᴅᴇᴀᴅ"),
                     BotCommand("id", "ᴄʜᴇᴄᴋ ʏᴏᴜʀ ɪᴅ"),
