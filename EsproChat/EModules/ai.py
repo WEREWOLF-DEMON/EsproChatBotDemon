@@ -3,9 +3,10 @@ from pyrogram import filters
 from pyrogram.enums import ChatAction
 from pyrogram.types import Message
 import g4f
-from g4f.models import gpt_4  # ✅ Ensure this matches your g4f version
+from g4f.models import gpt_4
 from pymongo import MongoClient
 import asyncio
+import re  # 👈 Required for regex
 
 # 🔧 Config
 BOT_USERNAME = "MissEsproBot"  # without @
@@ -15,42 +16,46 @@ MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retr
 # ✅ MongoDB setup
 mongo = MongoClient(MONGO_URI)
 chatdb = mongo.ChatDB.chat_data
-chatdb.create_index("question", unique=True)  # Optional but good
+chatdb.create_index("question", unique=True)
 
-# ✅ Smart chat handler (text messages only, no commands)
+# ✅ Main smart reply handler
 @app.on_message(filters.text & ~filters.command(["teach"]))
 async def smart_bot_handler(client, message: Message):
-    # Ignore bot messages
     if message.from_user and message.from_user.is_bot:
         return
 
-    # ✅ Private: always reply
     if message.chat.type == "private":
-        pass
-
-    # ✅ Group: reply only if bot is mentioned or replied to
+        pass  # ✅ Always reply in private
     elif message.chat.type in ("group", "supergroup"):
+        # ✅ Only reply if bot is mentioned or replied to
+        bot_user = await client.get_me()
         is_mentioned = f"@{BOT_USERNAME.lower()}" in message.text.lower()
         is_replied_to_bot = (
-            message.reply_to_message
-            and message.reply_to_message.from_user
-            and message.reply_to_message.from_user.is_self
+            message.reply_to_message and
+            message.reply_to_message.from_user and
+            message.reply_to_message.from_user.id == bot_user.id
         )
         if not (is_mentioned or is_replied_to_bot):
-            return  # ❌ Ignore if bot not mentioned or not replied
+            return  # ❌ Ignore if bot not mentioned or not replied to
+
+
+
+# ❌ Ignore messages containing any URL/link
+if re.search(r'https?://|www\.', message.text.lower()):
+    return
 
     await message.reply_chat_action(ChatAction.TYPING)
-    await asyncio.sleep(min(3, max(1, len(message.text) * 0.03)))  # dynamic typing delay
+    await asyncio.sleep(min(3, max(1, len(message.text) * 0.03)))  # Typing delay
 
     try:
         user_input = message.text.strip().lower()
 
-        # 🔍 Check if answer already learned
+        # 🔍 Check MongoDB first
         data = chatdb.find_one({"question": user_input})
         if data:
             return await message.reply(data["answer"])
 
-        # 🧠 GPT prompt
+        # 🧠 GPT Prompt
         prompt = f"""
 Tum ek real ladki ho. Har reply chhoti aur friendly Hindi mein do. Sirf 1-2 line likho.
 
@@ -58,7 +63,6 @@ User: {message.text}
 Espro:
 """
 
-        # GPT response using g4f
         response = g4f.ChatCompletion.create(
             model=gpt_4,
             messages=[{"role": "user", "content": prompt}],
@@ -67,7 +71,6 @@ Espro:
         final_answer = response.strip()
 
         if final_answer:
-            # ✅ Save to DB
             chatdb.update_one(
                 {"question": user_input},
                 {"$set": {"answer": final_answer}},
@@ -80,13 +83,12 @@ Espro:
     except Exception as e:
         await message.reply("😓 Error:\n" + str(e))
 
-# ✅ /teach command (owner/admin/private only)
+# ✅ /teach command to teach manually
 @app.on_message(filters.command("teach") & filters.text)
 async def teach_command(client, message: Message):
     is_owner = message.from_user.id == OWNER_ID
     is_admin = False
 
-    # Check if user is admin (for group only)
     if message.chat.type != "private":
         try:
             member = await client.get_chat_member(message.chat.id, message.from_user.id)
@@ -94,7 +96,6 @@ async def teach_command(client, message: Message):
         except:
             pass
 
-    # Only allow owner, admin, or private
     if not (is_owner or is_admin or message.chat.type == "private"):
         return await message.reply("❌ Sirf owner ya admin hi /teach use kar sakta hai.")
 
