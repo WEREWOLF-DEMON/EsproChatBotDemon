@@ -16,7 +16,7 @@ async def Murali():
         except Exception as err:
             print(f"Failed to import {all_module}: {err}")
 
-    print("CHIKU BOT HAS BEEN STARTED")
+    print("ESPRO BOT HAS BEEN STARTED")
     print("Join our Channel: @EsproUpdate")
 
     if SETCMD:
