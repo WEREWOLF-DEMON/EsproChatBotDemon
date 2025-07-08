@@ -3,6 +3,8 @@ from pyrogram.types import Message
 import random
 from EsproChat import app
 
+
+# 🎉 List of 50 Random Welcome Messages
 WELCOME_MESSAGES = [
     "Hey {mention}, welcome to {chat} 😄",
     "🎉 {mention} just joined {chat}! Make yourself at home.",
@@ -58,16 +60,18 @@ WELCOME_MESSAGES = [
     "Aaj ka naya member: {mention} 🎉 Welcome to {chat}",
 ]
 
-# 👋 Welcome Handler
+# 👋 Handle New Chat Members (add, invite, request accept)
 @app.on_message(filters.new_chat_members)
 async def welcome_new_member(client, message: Message):
     for member in message.new_chat_members:
         if member.is_bot:
-            continue
+            continue  # Ignore bots
 
         mention = member.mention(style="markdown")
         chat_name = message.chat.title
         welcome_text = random.choice(WELCOME_MESSAGES).format(mention=mention, chat=chat_name)
 
-        await message.reply_text(welcome_text, disable_web_page_preview=True)
-
+        await message.reply_text(
+            welcome_text,
+            disable_web_page_preview=True
+        )
