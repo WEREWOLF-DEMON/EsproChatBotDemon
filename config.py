@@ -11,6 +11,9 @@ API_HASH = os.environ.get("API_HASH")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 
+BOT_USERNAME = getenv("BOT_USERNAME" , "EsproChatBot")
+
+
 OWNER_ID = list(
     map(int, getenv("OWNER_ID", "7666870729").split())
 ) 
