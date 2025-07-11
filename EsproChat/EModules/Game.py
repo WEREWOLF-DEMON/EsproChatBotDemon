@@ -2,6 +2,7 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 from pyrogram.errors import PeerIdInvalid
 import random
+from EsproChat import app
 
 
 user_data = {}  # {user_id: {"coins": float, "streak": int}}
