@@ -22,19 +22,6 @@ def get_user(user_id: int):
 def update_user(user_id: int, coins: int, streak: int):
     users.update_one({"_id": user_id}, {"$set": {"coins": coins, "streak": streak}}, upsert=True)
 
-# ------------------- COMMAND: /start -------------------
-
-@app.on_message(filters.command("start"))
-async def start_command(client, message: Message):
-    user = get_user(message.from_user.id)
-    await message.reply_text(
-        f"👋 Hello {message.from_user.first_name}!\n"
-        f"🎮 Welcome to Life Bet Game!\n\n"
-        f"You start with 💰 {user['coins']} coins.\n"
-        f"To bet, type: Bbet 1 or Bbet *"
-    )
-
-# ------------------- COMMAND: /balance -------------------
 
 @app.on_message(filters.command("balance"))
 async def check_balance(client, message: Message):
@@ -50,7 +37,7 @@ async def reset_coins(client, message: Message):
 
 # ------------------- COMMAND: Bbet -------------------
 
-@app.on_message(filters.command("bbet", prefixes=["B", "b"]))
+@app.on_message(filters.command("bet", prefixes=["/"]))
 async def bet_game(client: Client, message: Message):
     user_id = message.from_user.id
     name = message.from_user.mention
