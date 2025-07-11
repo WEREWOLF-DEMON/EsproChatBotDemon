@@ -6,12 +6,13 @@ import random
 import time
 from EsproChat import app
 from config import MONGO_URL
+
 # ------------------- CONFIG -------------------
 mongo_client = MongoClient(MONGO_URL)
 db = mongo_client["BetGame"]
 users = db["users"]
 
-cooldowns = {}  # Anti-spam cooldown tracking
+cooldowns = {}
 
 # ------------------- UTILITIES -------------------
 
@@ -28,9 +29,9 @@ def update_user(user_id: int, coins: int, streak: int, last_claim=None):
         data["last_claim"] = last_claim
     users.update_one({"_id": user_id}, {"$set": data}, upsert=True)
 
-# ------------------- /start -------------------
+# ------------------- /game -------------------
 
-@app.on_message(filters.command("/game"))
+@app.on_message(filters.command("game"))
 async def start_command(client, message: Message):
     get_user(message.from_user.id)
     await message.reply_text(
@@ -70,7 +71,9 @@ async def daily_bonus(client, message: Message):
             remaining = (last_claim_time + timedelta(hours=24)) - now
             hours = remaining.seconds // 3600
             mins = (remaining.seconds % 3600) // 60
-            return await message.reply(f"🕒 Wait {remaining.days}d {hours}h {mins}m for your next daily bonus.")
+            return await message.reply(
+                f"🕒 Wait {remaining.days}d {hours}h {mins}m for your next daily bonus."
+            )
 
     bonus = 50
     new_coins = user["coins"] + bonus
@@ -85,7 +88,6 @@ async def bet_game(client: Client, message: Message):
     name = message.from_user.mention
     args = message.text.split()
 
-    # Cooldown
     now = time.time()
     if user_id in cooldowns and now - cooldowns[user_id] < 5:
         return await message.reply("⏳ Please wait 5 seconds before betting again.")
@@ -96,20 +98,18 @@ async def bet_game(client: Client, message: Message):
 
     user = get_user(user_id)
 
-    # Bet amount
     if args[1] == "*":
         bet_amount = user["coins"]
-    else:
-        if not args[1].isdigit():
-            return await message.reply("❌ Invalid amount.\nUse: /bet 10 or /bet *")
+    elif args[1].isdigit():
         bet_amount = int(args[1])
+    else:
+        return await message.reply("❌ Invalid amount.\nUse: /bet 10 or /bet *")
 
     if bet_amount <= 0:
         return await message.reply("❌ Bet amount must be more than 0.")
     if bet_amount > user["coins"]:
         return await message.reply("🚫 Not enough coins!")
 
-    # Win or lose
     win = random.choice([True, False])
 
     if win:
@@ -122,9 +122,9 @@ async def bet_game(client: Client, message: Message):
             caption=(
                 f"🎰 {name} has bet {bet_amount} coins\n"
                 f"Oh yeah! He came back home with {bet_amount * 2} coins (✅)\n\n"
-                f"🎯 *Consecutive victories:* {new_streak}"
+                f"🎯 <b>Consecutive victories:</b> {new_streak}"
             ),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     else:
         new_coins = user["coins"] - bet_amount
@@ -148,7 +148,39 @@ async def top_players(client, message: Message):
     for i, user in enumerate(top, start=1):
         try:
             u = await client.get_users(user["_id"])
-            leaderboard += f"{i}. [{u.first_name}](tg://user?id={u.id}) — {user['coins']} coins\n"
+            leaderboard += f"{i}. <a href='tg://user?id={u.id}'>{u.first_name}</a> — {user['coins']} coins\n"
         except:
             continue
-    await message.reply_text(leaderboard, disable_web_page_preview=True)
+    await message.reply_text(leaderboard, parse_mode="HTML", disable_web_page_preview=True)
+
+# ------------------- /pay <user_id or reply> <amount> -------------------
+
+@app.on_message(filters.command("pay"))
+async def pay_command(client: Client, message: Message):
+    sender_id = message.from_user.id
+    sender = get_user(sender_id)
+
+    if message.reply_to_message:
+        receiver = message.reply_to_message.from_user
+    else:
+        args = message.text.split()
+        if len(args) < 3 or not args[1].isdigit() or not args[2].isdigit():
+            return await message.reply("❌ Usage: /pay <user_id or reply> <amount>")
+        receiver = await client.get_users(int(args[1]))
+
+    if not receiver or receiver.id == sender_id:
+        return await message.reply("❌ Invalid user.")
+
+    amount = int(message.text.split()[-1])
+    if amount <= 0:
+        return await message.reply("❌ Amount must be more than 0.")
+    if amount > sender["coins"]:
+        return await message.reply("🚫 You don't have enough coins!")
+
+    receiver_data = get_user(receiver.id)
+    update_user(sender_id, coins=sender["coins"] - amount, streak=sender["streak"])
+    update_user(receiver.id, coins=receiver_data["coins"] + amount, streak=receiver_data["streak"])
+
+    await message.reply(
+        f"✅ You sent {amount} coins to {receiver.mention}.\n💼 Your new balance: {sender['coins'] - amount} coins."
+            )
