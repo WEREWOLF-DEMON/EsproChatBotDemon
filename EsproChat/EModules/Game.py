@@ -5,7 +5,7 @@ import random
 from EsproChat import app
 from config import MONGO_URL
 
-MONGO_URL = "mongodb://localhost:27017"  # ⚠️ Replace with your Mongo 
+
 mongo_client = MongoClient(MONGO_URL)
 db = mongo_client["BetGame"]
 users = db["users"]
