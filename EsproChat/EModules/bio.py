@@ -52,13 +52,13 @@ def circle(pfp, size=(500, 500)):
     return pfp
 
 def welcomepic(pic, user, chatname, id, uname):
-    background = Image.open("EsproAiMusic/assets/wel2.png")
+    background = Image.open("EsproChat/assets/wel2.png")
     pfp = Image.open(pic).convert("RGBA")
     pfp = circle(pfp)
     pfp = pfp.resize((825, 824))
     draw = ImageDraw.Draw(background)
-    font = ImageFont.truetype('EsproAiMusic/assets/font.ttf', size=110)
-    welcome_font = ImageFont.truetype('EsproAiMusic/assets/font.ttf', size=60)
+    font = ImageFont.truetype('EsproChat/assets/font.ttf', size=110)
+    welcome_font = ImageFont.truetype('EsproChat/assets/font.ttf', size=60)
     draw.text((2100, 1420), f'ID: {id}', fill=(12000, 12000, 12000), font=font)
     pfp_position = (1990, 435)
     background.paste(pfp, pfp_position, pfp)
@@ -118,7 +118,7 @@ async def greet_group(_, member: ChatMemberUpdated):
             user.photo.big_file_id, file_name=f"pp{user.id}.png"
         )
     except AttributeError:
-        pic = "EsproAiMusic/assets/upic.png"
+        pic = "EsproChat/assets/upic.png"
     if (temp.MELCOW).get(f"welcome-{member.chat.id}") is not None:
         try:
             await temp.MELCOW[f"welcome-{member.chat.id}"].delete()
