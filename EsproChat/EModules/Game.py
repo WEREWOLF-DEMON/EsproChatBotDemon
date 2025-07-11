@@ -3,6 +3,7 @@ from pyrogram.types import Message
 from pymongo import MongoClient
 import random
 from EsproChat import app
+from confirm import MONGO_URL
 
 MONGO_URL = "mongodb://localhost:27017"  # ⚠️ Replace with your Mongo 
 mongo_client = MongoClient(MONGO_URL)
