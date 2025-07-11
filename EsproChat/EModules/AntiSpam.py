@@ -1,7 +1,7 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ChatPrivileges
 from EsproChat import app
-OENER_ID = 7666870729
+OWNER_ID = 7666870729
 
 # ---------------- Storage ----------------
 user_power_selection = {}  # Temporary power selections
