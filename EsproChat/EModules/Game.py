@@ -1,124 +1,100 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from pyrogram.errors import PeerIdInvalid
+from pymongo import MongoClient
 import random
-from EsproChat import app  # Make sure EsproChat/__init__.py initializes the Client as `app`
+from EsproChat import app
 
-# In-memory user coin data (not persistent)
-user_data = {}  # {user_id: {"coins": float, "streak": int}}
+MONGO_URL = "mongodb://localhost:27017"  # ⚠️ Replace with your Mongo 
+mongo_client = MongoClient(MONGO_URL)
+db = mongo_client["BetGame"]
+users = db["users"]
 
-# ------------------- /balance -------------------
-@app.on_message(filters.command("balance"))
-async def balance(client, message: Message):
-    user_id = message.from_user.id
-    if user_id not in user_data:
-        user_data[user_id] = {"coins": 100.0, "streak": 0}
-    coins = user_data[user_id]["coins"]
-    await message.reply(f"💼 You currently have **{coins:,.3f}** coins.", parse_mode="markdown2")
+# ------------------- UTILITIES -------------------
 
-# ------------------- /pay -------------------
-@app.on_message(filters.command("pay"))
-async def pay_user(client: Client, message: Message):
-    user_id = message.from_user.id
-    if user_id not in user_data:
-        user_data[user_id] = {"coins": 100.0, "streak": 0}
+def get_user(user_id: int):
+    user = users.find_one({"_id": user_id})
+    if not user:
+        users.insert_one({"_id": user_id, "coins": 100, "streak": 0})
+        return {"_id": user_id, "coins": 100, "streak": 0}
+    return user
 
-    args = message.text.split()
-    if len(args) < 2:
-        return await message.reply("❌ Usage: `/pay @username 10` or reply to a user with `/pay 10`", quote=True)
+def update_user(user_id: int, coins: int, streak: int):
+    users.update_one({"_id": user_id}, {"$set": {"coins": coins, "streak": streak}}, upsert=True)
 
-    # Get amount
-    try:
-        amount = float(args[-1])
-    except ValueError:
-        return await message.reply("❌ Invalid amount!", quote=True)
+# ------------------- COMMAND: /start -------------------
 
-    if amount <= 0:
-        return await message.reply("❌ Amount must be greater than 0", quote=True)
-
-    # Get target user
-    if message.reply_to_message:
-        target_user = message.reply_to_message.from_user
-    elif len(args) == 3 and args[1].startswith("@"):
-        username = args[1].replace("@", "")
-        try:
-            target_user = await client.get_users(username)
-        except PeerIdInvalid:
-            return await message.reply("❌ User not found.", quote=True)
-    else:
-        return await message.reply("❌ Mention or reply to a user to send coins.", quote=True)
-
-    target_id = target_user.id
-    if target_id == user_id:
-        return await message.reply("😅 You can't pay yourself!", quote=True)
-
-    # Transfer coins
-    sender = user_data[user_id]
-    receiver = user_data.get(target_id, {"coins": 100.0, "streak": 0})
-
-    if sender["coins"] < amount:
-        return await message.reply("🚫 You don't have enough coins!", quote=True)
-
-    sender["coins"] = round(sender["coins"] - amount, 3)
-    receiver["coins"] = round(receiver["coins"] + amount, 3)
-    user_data[target_id] = receiver
-
-    await message.reply(
-        f"✅ {message.from_user.mention} sent **{amount:,.3f}** coins to {target_user.mention}.\n"
-        f"💰 Your Balance: **{sender['coins']:,.3f}**",
-        parse_mode="markdown2"
+@app.on_message(filters.command("start"))
+async def start_command(client, message: Message):
+    user = get_user(message.from_user.id)
+    await message.reply_text(
+        f"👋 Hello {message.from_user.first_name}!\n"
+        f"🎮 Welcome to Life Bet Game!\n\n"
+        f"You start with 💰 {user['coins']} coins.\n"
+        f"To bet, type: Bbet 1 or Bbet *"
     )
 
-# ------------------- /bet -------------------
-@app.on_message(filters.command("bet"))
+# ------------------- COMMAND: /balance -------------------
+
+@app.on_message(filters.command("balance"))
+async def check_balance(client, message: Message):
+    user = get_user(message.from_user.id)
+    await message.reply(f"💼 You currently have {user['coins']} coins.")
+
+# ------------------- COMMAND: /reset -------------------
+
+@app.on_message(filters.command("reset"))
+async def reset_coins(client, message: Message):
+    update_user(message.from_user.id, coins=100, streak=0)
+    await message.reply("🔄 Your coins have been reset to 100.")
+
+# ------------------- COMMAND: Bbet -------------------
+
+@app.on_message(filters.command("bbet", prefixes=["B", "b"]))
 async def bet_game(client: Client, message: Message):
     user_id = message.from_user.id
     name = message.from_user.mention
     args = message.text.split()
 
     if len(args) != 2:
-        return await message.reply("❌ Usage: /bet <amount>\nExample: `/bet 1.5`", quote=True)
+        return await message.reply("❌ Usage: Bbet <amount>\nExample: Bbet 10 or Bbet *")
 
-    try:
-        bet_amount = float(args[1])
-    except ValueError:
-        return await message.reply("❌ Invalid amount!\nExample: `/bet 1.5`", quote=True)
+    user = get_user(user_id)
+
+    # Handle "*"
+    if args[1] == "*":
+        bet_amount = user["coins"]
+    else:
+        if not args[1].isdigit():
+            return await message.reply("❌ Invalid amount.\nUse: Bbet 10 or Bbet *")
+        bet_amount = int(args[1])
 
     if bet_amount <= 0:
-        return await message.reply("❌ Bet must be more than 0", quote=True)
-
-    if user_id not in user_data:
-        user_data[user_id] = {"coins": 100.0, "streak": 0}
-
-    player = user_data[user_id]
-    if bet_amount > player["coins"]:
-        return await message.reply(f"🚫 Not enough coins! You have {player['coins']:.3f}", quote=True)
+        return await message.reply("❌ Bet amount must be greater than 0.")
+    if bet_amount > user["coins"]:
+        return await message.reply("🚫 You don't have enough coins to bet!")
 
     win = random.choice([True, False])
 
     if win:
-        player["coins"] = round(player["coins"] + bet_amount, 3)
-        player["streak"] += 1
+        new_coins = user["coins"] + bet_amount
+        new_streak = user["streak"] + 1
+        update_user(user_id, new_coins, new_streak)
         await message.reply_photo(
             photo="https://i.imgur.com/F7N5Z4S.png",
             caption=(
-                f"🎰 {name} has bet **{bet_amount:,.3f}** coins\n"
-                f"🎉 Oh yeah! He came back home with **{bet_amount * 2:,.3f}** coins (✅)\n\n"
-                f"🎯 Consecutive victories: **{player['streak']}**\n"
-                f"💰 Balance: **{player['coins']:,.3f}**"
-            ),
-            parse_mode="markdown2"
+                f"🎰 {name} has bet {bet_amount} coins\n"
+                f"🎉 He won and now has {new_coins} coins!\n"
+                f"🔥 Streak: {new_streak}"
+            )
         )
     else:
-        player["coins"] = round(player["coins"] - bet_amount, 3)
-        player["streak"] = 0
+        new_coins = user["coins"] - bet_amount
+        new_streak = 0
+        update_user(user_id, new_coins, new_streak)
         await message.reply_photo(
             photo="https://i.imgur.com/AID8bGS.png",
             caption=(
-                f"🎰 {name} has bet **{bet_amount:,.3f}** coins\n"
-                f"Oh no! He came back home without **{bet_amount:,.3f}** coins (❌).\n\n"
-                f"[🔁 Get more coins here!](https://t.me/YourChannel)\n"
-                f"💰 Balance: **{player['coins']:,.3f}**"
-            ),
-            parse_mode="markdown2"
-    )
+                f"🎰 {name} has bet {bet_amount} coins\n"
+                f"😢 He lost and now has {new_coins} coins."
+            )
+        )
