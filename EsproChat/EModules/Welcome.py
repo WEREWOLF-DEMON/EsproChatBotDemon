@@ -41,7 +41,7 @@ def circle(pfp, size=(500, 500)):
 
     pfp = pfp.resize(size, resample_filter).convert("RGBA")
     bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
-    mask = Image.new("R", bigsize, 0)
+    mask = Image.new("L", bigsize, 0)
     draw = ImageDraw.Draw(mask)
     draw.ellipse((0, 0) + bigsize, fill=255)
     mask = mask.resize(pfp.size, resample_filter)
