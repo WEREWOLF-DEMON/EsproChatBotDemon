@@ -40,6 +40,7 @@ async def handle_admin_command(client: Client, message: Message):
 
     args = message.text.split()[1:]
 
+    # If used via reply, skip tag (fallback to inline button style)
     if message.reply_to_message:
         target = message.reply_to_message.from_user
         user_power_selection[target.id] = set()
@@ -48,10 +49,12 @@ async def handle_admin_command(client: Client, message: Message):
             reply_markup=build_keyboard(target.id)
         )
 
-    if len(args) < 2:
-        return await message.reply("🧠 Usage:\n`/admin @user del pin`\nor\nReply with `/admin`")
+    if len(args) < 3:
+        return await message.reply("🧠 Usage:\n`/admin @user Tag del pin`\nOr reply with `/admin`")
 
-    user_ref, powers = args[0], args[1:]
+    user_ref = args[0]
+    tag = args[1]  # 🏷️ This will be used as admin title
+    powers = args[2:]
 
     try:
         user = await client.get_users(user_ref if user_ref.startswith("@") else int(user_ref))
@@ -75,7 +78,17 @@ async def handle_admin_command(client: Client, message: Message):
             user_id=user.id,
             privileges=privileges
         )
-        await message.reply(f"✅ [{user.first_name}](tg://user?id={user.id}) promoted with: `{', '.join(powers)}`")
+
+        # ✨ Set custom admin title/tag
+        await client.set_administrator_title(
+            chat_id=message.chat.id,
+            user_id=user.id,
+            custom_title=tag
+        )
+
+        await message.reply(
+            f"✅ [{user.first_name}](tg://user?id={user.id}) promoted as **{tag}** with powers: `{', '.join(powers)}`"
+        )
     except Exception as e:
         await message.reply(f"❌ Error:\n`{e}`")
 
