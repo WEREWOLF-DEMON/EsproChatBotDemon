@@ -9,7 +9,7 @@ import asyncio
 import re
 
 # ✅ MongoDB setup
-mongo = MongoClient(MONGO_URI)
+mongo = MongoClient(MONGO_URL)
 chatdb = mongo.ChatDB.chat_data
 
 # ❌ Ignore if replying to or mentioning someone else
