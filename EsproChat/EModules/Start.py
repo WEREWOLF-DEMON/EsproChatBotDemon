@@ -10,6 +10,7 @@ import asyncio
 from EsproChat.Strings import HELP_BUTTON, START_TEXT, START_BUTTON
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
+# Emojis, Stickers, and Photo List
 EMOJIOS = [
     "💣", "💥", "🪄", "🎋", "✨", "🦹", "🌺", "🍀", "💞", "🎁", "💌", "🧨", "⚡", "🤡", "👻",
     "🎃", "🎩", "🕊", "🍭", "🐻", "🦄", "🐼", "🐰", "🌸", "🌈", "🌟", "🌼", "🐱", "🐶", "🐨",
@@ -67,51 +68,52 @@ PHOTOS = [
     "https://telegra.ph/file/e8d502afc144e77d81c48.jpg",
 ]
 
-# Corrected startbot function with the new requested sequence
+# /start command
 @app.on_cmd("start")
 async def startbot(client, message):
     try:
-        # Step 1: Send the initial photo
-        imgg = await message.reply_photo(
+        # 1. Send Welcome Photo
+        photo = await message.reply_photo(
             photo=random.choice(PHOTOS),
             caption=f"Hᴇʟʟᴏ {message.from_user.mention} 👋"
         )
-        await asyncio.sleep(2)  # Wait for 2 seconds
+        await asyncio.sleep(2)
+        await photo.delete()
 
-        # Step 2: Delete the photo
-        await imgg.delete()
-        await asyncio.sleep(0.5) # A small pause
+        # 2. Show 2 Emojis as animation
+        emj = await message.reply_text(f"{random.choice(EMOJIOS)} {random.choice(EMOJIOS)}")
+        await asyncio.sleep(1.3)
+        await emj.delete()
 
-        # Step 3: Send the text message
+        # 3. Let me start...
         let = await message.reply_text("ʟᴇᴛ ᴍᴇ sᴛᴀʀᴛ...")
-        await asyncio.sleep(1.5) # Wait for 1.5 seconds
-
-        # Step 4: Delete the text message
+        await asyncio.sleep(1.5)
         await let.delete()
-        
-        # Step 5: Send 4 stickers one by one with a flashing effect
-        for _ in range(4):
-            sticker_msg = await message.reply_sticker(random.choice(STICKER))
-            await asyncio.sleep(0.7)  # Quick delay for the flash effect
-            await sticker_msg.delete()
 
-        # Step 6: Send the final start message after all animations are done
+        # 4. Send 4 Stickers one by one
+        for _ in range(4):
+            stkr = await message.reply_sticker(random.choice(STICKER))
+            await asyncio.sleep(0.75)
+            await stkr.delete()
+
+        # 5. Final animated reply
         try:
             await app.resolve_peer(OWNER_ID[0])
             OWNER = OWNER_ID[0]
         except:
             OWNER = OWNER_ID[0]
-            
-        M = START_BUTTON(OWNER)
-        response = requests.get("https://nekos.best/api/v2/neko").json()
-        image_url = response["results"][0]["url"]
+
+        btns = START_BUTTON(OWNER)
+        neko_res = requests.get("https://nekos.best/api/v2/neko").json()
+        neko_img = neko_res["results"][0]["url"]
+
         await message.reply_photo(
-            image_url,
+            photo=neko_img,
             caption=START_TEXT.format(message.from_user.mention, app.mention),
-            reply_markup=M,
+            reply_markup=btns,
         )
 
-        # Handle database and logging in the background
+        # Log user/chat in DB
         try:
             if message.chat.type == ChatType.PRIVATE:
                 await add_served_user(message.from_user.id)
@@ -119,28 +121,34 @@ async def startbot(client, message):
                 await add_served_chat(message.chat.id)
         except:
             pass
-            
-        await app.send_message(LOGGER_ID, f"ꜱᴏᴍᴇᴏɴᴇ ᴊᴜꜱᴛ ꜱᴛᴀʀᴛᴇᴅ {app.mention}\n\nɴᴀᴍᴇ - {message.from_user.mention}\nɪᴅ - {message.from_user.id}\nᴜꜱᴇʀɴᴀᴍᴇ - @{message.from_user.username}")
+
+        await app.send_message(
+            LOGGER_ID,
+            f"🔔 ɴᴇᴡ /start ʙʏ {message.from_user.mention}\n"
+            f"🆔: `{message.from_user.id}`\n"
+            f"👤: @{message.from_user.username or 'NoUsername'}"
+        )
 
     except Exception as e:
-        # If anything goes wrong, log the error
-        print(f"Error in /start command: {e}")
+        print(f"[ERROR in /start] {e}")
 
-
+# /stats command
 @app.on_cmd("stats")
 async def statsbot(client, message):
     if message.from_user.id not in Owner and message.from_user.id not in OWNER_ID:
         return
 
     response = requests.get("https://nekos.best/api/v2/neko").json()
-    m = response["results"][0]["url"]
+    neko_url = response["results"][0]["url"]
+
     users = len(await get_served_users())
     chats = len(await get_served_chats())
-    await message.reply_photo(
-        photo=m,
-        caption=f"""ʜᴇʀᴇ ɪꜱ ᴛʜᴇ ᴛᴏᴛᴀʟ ꜱᴛᴀᴛꜱ ᴏꜰ {app.mention}:
 
-➻ ᴄʜᴀᴛs : {chats}
-➻ ᴜsᴇʀs : {users}
+    await message.reply_photo(
+        photo=neko_url,
+        caption=f"""✨ ᴛᴏᴛᴀʟ ꜱᴛᴀᴛꜱ ᴏꜰ {app.mention}:
+
+👥 ᴜꜱᴇʀꜱ: {users}
+💬 ᴄʜᴀᴛꜱ: {chats}
 """
     )
