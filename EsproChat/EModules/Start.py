@@ -7,16 +7,17 @@ from pyrogram.enums import ChatType
 import random 
 from config import OWNER_ID, LOGGER_ID
 import asyncio
-from EsproChat.Strings import HELP_BUTTON, START_TEXT, START_BUTTON
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from EsproChat.Strings import START_TEXT, START_BUTTON
+from pyrogram.types import InlineKeyboardMarkup
 
-# Emojis, Stickers, and Photo List
+# Emoji list
 EMOJIOS = [
     "💣", "💥", "🪄", "🎋", "✨", "🦹", "🌺", "🍀", "💞", "🎁", "💌", "🧨", "⚡", "🤡", "👻",
     "🎃", "🎩", "🕊", "🍭", "🐻", "🦄", "🐼", "🐰", "🌸", "🌈", "🌟", "🌼", "🐱", "🐶", "🐨",
     "🐥", "🎮", "🎵", "📚", "🎨", "☕", "🍕", "🍦", "🍰", "🎈", "🎉", "🐤", "🍬"
 ]
 
+# Sticker list
 STICKER = [
     "CAACAgUAAx0CfAEyWgAClxdl9Gg4N-HyCImjGFXOQSHz50MD9wACzgoAAgrrYVWxPZWXGNr8SjQE",
     "CAACAgUAAx0CfAEyWgAClx1l9Gh9PHZKDIw8qbacmxzRD1QNAAOcDQAC0YVxVQijiuf_CF8_NAQ",
@@ -33,9 +34,10 @@ STICKER = [
     "CAACAgUAAx0CffjZyQACKotmInP5P_GvgKU67nB3ZXDU5UHdwQACBAkAAmGTqFTyMEUMwHr2WB4E",
     "CAACAgUAAx0CfAEyWgAClyxl9GkdhdvG8gmelpuDDXW43GdyYgACDAkAAgYmmVWwda82o5ssVx4E",
     "CAACAgQAAx0CfAEyWgACly9l9GoPSnyCro7QrrIPDIMl0VJNvAACKAwAArq5EFDBJa4kfYMtSB4E",
-    "CAACAgUAAx0CfAEyWgAClzJl9Gphz8y2LOZXS_g4SBfUPQwAAeIAAs0EAAISTXlWi28Xpyv5nuUeBA",
+    "CAACAgUAAx0CfAEyWgAClzJl9Gphz8y2LOZXS_g4SBfUPQwAAeIAAs0EAAISTXlWi28Xpyv5nuUeBA"
 ]
 
+# Photo list
 PHOTOS = [
     "https://telegra.ph/file/018d6002a0ad3aee739f4.jpg",
     "https://telegra.ph/file/9d1b413d24ef703e931e3.jpg",
@@ -56,23 +58,14 @@ PHOTOS = [
     "https://telegra.ph/file/dd4479290dc8aecd5ed26.jpg",
     "https://telegra.ph/file/7226a80d33f1d9e9051a4.jpg",
     "https://telegra.ph/file/903078ebee2327f8a433c.jpg",
-    "https://telegra.ph/file/f5e17db4530f3afb7df29.jpg",
-    "https://telegra.ph/file/d104ea00a4f5d5a2bd6bd.jpg",
-    "https://telegra.ph/file/e30c70f101f19dac328c6.jpg",
-    "https://telegra.ph/file/9dbab97d92fefb83ffb83.jpg",
-    "https://telegra.ph/file/574377193d0ac413757a4.jpg",
-    "https://telegra.ph/file/704ef3c97af1163689206.jpg",
-    "https://telegra.ph/file/18bb7adf017c4566f17bf.jpg",
-    "https://telegra.ph/file/eeb95340c7f1b6548f4e2.jpg",
-    "https://telegra.ph/file/b6c7cee4bb3767c59ab54.jpg",
-    "https://telegra.ph/file/e8d502afc144e77d81c48.jpg",
+    "https://telegra.ph/file/f5e17db4530f3afb7df29.jpg"
 ]
 
 # /start command
 @app.on_cmd("start")
 async def startbot(client, message):
     try:
-        # 1. Send Welcome Photo
+        # 1. Welcome photo
         photo = await message.reply_photo(
             photo=random.choice(PHOTOS),
             caption=f"Hᴇʟʟᴏ {message.from_user.mention} 👋"
@@ -80,40 +73,39 @@ async def startbot(client, message):
         await asyncio.sleep(2)
         await photo.delete()
 
-        # 2. Show 2 Emojis as animation
+        # 2. Emoji pair
         emj = await message.reply_text(f"{random.choice(EMOJIOS)} {random.choice(EMOJIOS)}")
         await asyncio.sleep(1.3)
         await emj.delete()
 
-        # 3. Let me start...
+        # 3. "let me start..."
         let = await message.reply_text("ʟᴇᴛ ᴍᴇ sᴛᴀʀᴛ...")
         await asyncio.sleep(1.5)
         await let.delete()
 
-        # 4. Send 4 Stickers one by one
+        # 4. 4 stickers with delay
         for _ in range(4):
             stkr = await message.reply_sticker(random.choice(STICKER))
-            await asyncio.sleep(0.75)
+            await asyncio.sleep(0.8)
             await stkr.delete()
 
-        # 5. Final animated reply
+        # 5. Final welcome with neko image
+        neko = requests.get("https://nekos.best/api/v2/neko").json()
+        neko_img = neko["results"][0]["url"]
+
         try:
             await app.resolve_peer(OWNER_ID[0])
             OWNER = OWNER_ID[0]
         except:
             OWNER = OWNER_ID[0]
 
-        btns = START_BUTTON(OWNER)
-        neko_res = requests.get("https://nekos.best/api/v2/neko").json()
-        neko_img = neko_res["results"][0]["url"]
-
         await message.reply_photo(
             photo=neko_img,
             caption=START_TEXT.format(message.from_user.mention, app.mention),
-            reply_markup=btns,
+            reply_markup=START_BUTTON(OWNER),
         )
 
-        # Log user/chat in DB
+        # Log to DB
         try:
             if message.chat.type == ChatType.PRIVATE:
                 await add_served_user(message.from_user.id)
@@ -128,9 +120,9 @@ async def startbot(client, message):
             f"🆔: `{message.from_user.id}`\n"
             f"👤: @{message.from_user.username or 'NoUsername'}"
         )
-
     except Exception as e:
         print(f"[ERROR in /start] {e}")
+
 
 # /stats command
 @app.on_cmd("stats")
@@ -138,8 +130,8 @@ async def statsbot(client, message):
     if message.from_user.id not in Owner and message.from_user.id not in OWNER_ID:
         return
 
-    response = requests.get("https://nekos.best/api/v2/neko").json()
-    neko_url = response["results"][0]["url"]
+    neko = requests.get("https://nekos.best/api/v2/neko").json()
+    neko_url = neko["results"][0]["url"]
 
     users = len(await get_served_users())
     chats = len(await get_served_chats())
