@@ -2,15 +2,11 @@ from EsproChat import app
 from pyrogram import filters
 from pyrogram.enums import ChatAction
 from pyrogram.types import Message
+from config import BOT_USERNAME, OWNER_ID, MONGO_URI
 import g4f
 from pymongo import MongoClient
 import asyncio
 import re
-
-# 🔧 Config
-BOT_USERNAME = "MissEsproBot"  # without @
-OWNER_ID = 7666870729
-MONGO_URI = "mongodb+srv://esproaibot:esproai12307@espro.rz2fl.mongodb.net/?retryWrites=true&w=majority&appName=Espro"
 
 # ✅ MongoDB setup
 mongo = MongoClient(MONGO_URI)
@@ -39,11 +35,8 @@ def contains_link(text):
 # ✅ Smart Chat Handler
 @app.on_message(filters.text & ~filters.regex(r"^/"))
 async def smart_bot_handler(client, message: Message):
-    if is_message_for_someone_else(message):
-        return  # ❌ Ignore replies or mentions
-
-    if contains_link(message.text):
-        return  # ❌ Ignore messages with links
+    if is_message_for_someone_else(message) or contains_link(message.text):
+        return
 
     await message.reply_chat_action(ChatAction.TYPING)
     await asyncio.sleep(1)
@@ -56,9 +49,12 @@ async def smart_bot_handler(client, message: Message):
         if data:
             return await message.reply(data["answer"])
 
-        # 🧠 GPT fallback
-        prompt = f"""
-Tum ek real ladki ho. Har reply chhoti aur friendly Hindi mein do. Sirf 1-2 line likho.
+        # 🧠 GPT fallback with behavior detection
+        base_prompt = f"""
+Tum ek ladki ho jiska naam Espro hai. Tum real insaan ki tarah behave karti ho. Har response short, pyaar bhari aur natural Hindi mein do.
+
+Agar koi pyar ya romantic baat kare to uske mood ke hisaab se jawab do. Agar normal sawal ho to simple aur sweet jawaab do.
+Sirf 1-2 line mein jawab do.
 
 User: {message.text}
 Espro:
@@ -66,7 +62,7 @@ Espro:
 
         response = g4f.ChatCompletion.create(
             model=g4f.models.gpt_4,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": base_prompt}],
         )
 
         final_answer = response.strip()
