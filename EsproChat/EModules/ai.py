@@ -2,7 +2,7 @@ from EsproChat import app
 from pyrogram import filters
 from pyrogram.enums import ChatAction
 from pyrogram.types import Message
-from config import BOT_USERNAME, OWNER_ID, MONGO_URI
+from config import OWNER_ID as MONGO_URL  
 import g4f
 from pymongo import MongoClient
 import asyncio
