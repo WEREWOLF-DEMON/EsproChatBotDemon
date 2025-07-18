@@ -26,12 +26,13 @@ STICKER = [
     "CAACAgUAAx0CffjZyQACKoZmInOTHCv5lfpO580Y_UPEeUveYAAClAgAAspLwVT1oL4z_bhK7x4E",
     "CAACAgUAAx0CffjZyQACKo5mInRgNfyhH-Y3tKwKyj4_RoKu9gACsgYAAtAF2VYY6HZG8DUiyh4E",
     "CAACAgUAAx0CffjZyQACKoVmInNNz2YqgVIOm0b_XNASdarg0QAC9QkAAlTOgFSpIzlJ8dofZR4E",
--   "CAACAgUAAx0CffjZyQACKohmInOZTlDo3YUTGWNdt1-8QFvrhQACqgwAArC9oFRVcuyU8PCqFR4E",
+    "CAACAgUAAx0CffjZyQACKohmInOZTlDo3YUTGWNdt1-8QFvrhQACqgwAArC9oFRVcuyU8PCqFR4E",
     "CAACAgUAAx0CffjZyQACKopmInPJwawFfy9z96S23cRxc5iI3QACegsAAtFEoVSKNlWkZeVvBh4E",
     "CAACAgUAAx0CffjZyQACKodmInOY37YoG7I-Mn9VbHbcE1VkYgACWAcAAmF4oFRci8T1o_XfEh4E",
     "CAACAgUAAx0CffjZyQACKotmInP5P_GvgKU67nB3ZXDU5UHdwQACBAkAAmGTqFTyMEUMwHr2WB4E",
     "CAACAgUAAx0CfAEyWgAClyxl9GkdhdvG8gmelpuDDXW43GdyYgACDAkAAgYmmVWwda82o5ssVx4E",
-
+    "CAACAgQAAx0CfAEyWgACly9l9GoPSnyCro7QrrIPDIMl0VJNvAACKAwAArq5EFDBJa4kfYMtSB4E",
+    "CAACAgUAAx0CfAEyWgAClzJl9Gphz8y2LOZXS_g4SBfUPQwAAeIAAs0EAAISTXlWi28Xpyv5nuUeBA",
 ]
 
 PHOTOS = [
@@ -40,39 +41,61 @@ PHOTOS = [
     "https://telegra.ph/file/035f1b9835c47f45952f7.jpg",
     "https://telegra.ph/file/ca93aeef2e7b45918b668.jpg",
     "https://telegra.ph/file/be64889b9a092f05bb51e.jpg",
+    "https://telegra.ph/file/b75e6977d0fa2d5d78b0f.jpg",
+    "https://telegra.ph/file/7a07ef4fd40ad2eb20c35.jpg",
+    "https://telegra.ph/file/cc7adb01901d0e3d2ed3c.jpg",
+    "https://telegra.ph/file/38e76bbfb4666757186f1.jpg",
+    "https://telegra.ph/file/602b29a89fca3129194be.jpg",
+    "https://telegra.ph/file/71d6213be9255750453a6.jpg",
+    "https://telegra.ph/file/7576d27e926a634add7f4.jpg",
+    "https://telegra.ph/file/c15485da3d83eb47ad0ff.jpg",
+    "https://telegra.ph/file/2c46895723d637de84918.jpg",
+    "https://telegra.ph/file/148858c4837e90c9cae49.jpg",
+    "https://telegra.ph/file/aa5556e11d949e5f095c5.jpg",
+    "https://telegra.ph/file/dd4479290dc8aecd5ed26.jpg",
+    "https://telegra.ph/file/7226a80d33f1d9e9051a4.jpg",
+    "https://telegra.ph/file/903078ebee2327f8a433c.jpg",
+    "https://telegra.ph/file/f5e17db4530f3afb7df29.jpg",
+    "https://telegra.ph/file/d104ea00a4f5d5a2bd6bd.jpg",
+    "https://telegra.ph/file/e30c70f101f19dac328c6.jpg",
+    "https://telegra.ph/file/9dbab97d92fefb83ffb83.jpg",
+    "https://telegra.ph/file/574377193d0ac413757a4.jpg",
+    "https://telegra.ph/file/704ef3c97af1163689206.jpg",
+    "https://telegra.ph/file/18bb7adf017c4566f17bf.jpg",
+    "https://telegra.ph/file/eeb95340c7f1b6548f4e2.jpg",
+    "https://telegra.ph/file/b6c7cee4bb3767c59ab54.jpg",
+    "https://telegra.ph/file/e8d502afc144e77d81c48.jpg",
 ]
 
-# Corrected startbot function with proper timing and sequence
+# Corrected startbot function with the new requested sequence
 @app.on_cmd("start")
 async def startbot(client, message):
     try:
-        # Step 1: Send the initial welcome photo
+        # Step 1: Send the initial photo
         imgg = await message.reply_photo(
             photo=random.choice(PHOTOS),
             caption=f"Hᴇʟʟᴏ {message.from_user.mention} 👋"
         )
-        await asyncio.sleep(1.5) # Wait for 1.5 seconds
+        await asyncio.sleep(2)  # Wait for 2 seconds
 
-        # Step 2: Send the "let me start" message and edit it for animation
-        let = await message.reply_text("ʟᴇᴛ ᴍᴇ sᴛᴀʀᴛ...")
-        await asyncio.sleep(1) # Wait for 1 second
-        await let.edit("ᴘʀᴇᴘᴀʀɪɴɢ ᴛʜᴇ ᴍᴀɢɪᴄ ✨")
-        await asyncio.sleep(1.5) # Wait for 1.5 seconds
-
-        # Step 3: Clean up the initial messages before the main content
+        # Step 2: Delete the photo
         await imgg.delete()
+        await asyncio.sleep(0.5) # A small pause
+
+        # Step 3: Send the text message
+        let = await message.reply_text("ʟᴇᴛ ᴍᴇ sᴛᴀʀᴛ...")
+        await asyncio.sleep(1.5) # Wait for 1.5 seconds
+
+        # Step 4: Delete the text message
         await let.delete()
+        
+        # Step 5: Send 4 stickers one by one with a flashing effect
+        for _ in range(4):
+            sticker_msg = await message.reply_sticker(random.choice(STICKER))
+            await asyncio.sleep(0.7)  # Quick delay for the flash effect
+            await sticker_msg.delete()
 
-        # Step 4: Quick animation with an emoji and a sticker
-        emoji_msg = await message.reply_text(random.choice(EMOJIOS))
-        await asyncio.sleep(0.8) # Wait for 0.8 seconds
-        await emoji_msg.delete()
-
-        sticker_msg = await message.reply_sticker(random.choice(STICKER))
-        await asyncio.sleep(0.8) # Wait for 0.8 seconds
-        await sticker_msg.delete()
-
-        # Step 5: Send the final start message
+        # Step 6: Send the final start message after all animations are done
         try:
             await app.resolve_peer(OWNER_ID[0])
             OWNER = OWNER_ID[0]
@@ -88,7 +111,7 @@ async def startbot(client, message):
             reply_markup=M,
         )
 
-        # Step 6: Handle database and logging in the background
+        # Handle database and logging in the background
         try:
             if message.chat.type == ChatType.PRIVATE:
                 await add_served_user(message.from_user.id)
