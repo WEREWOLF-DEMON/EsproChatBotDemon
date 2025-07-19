@@ -9,29 +9,23 @@ import os
 import json
 from typing import Optional, List, Union
 
-# Required Modules:
-# 1. pyrogram - Telegram bot framework
-# 2. requests - API calls
-# 3. re - Regular expressions
-# 4. asyncio - Async operations
-# 5. os - File operations
-# 6. json - JSON handling
-
 # Sightengine Configuration
 SIGHTENGINE_USER = "1916313622"  # Replace with your actual API user
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual API secret
 SE_CREDENTIALS_AVAILABLE = bool(SIGHTENGINE_USER and SIGHTENGINE_SECRET)
 
-# Database to store exempt user IDs (initialize as list)
+# Database to store exempt user IDs
 exempt_users: List[int] = []
+
+# Create downloads directory if it doesn't exist
+if not os.path.exists('downloads'):
+    os.makedirs('downloads')
 
 # Proper OWNER_ID handling from config.py
 if isinstance(OWNER_ID, (list, tuple)):
-    exempt_users.extend(map(int, OWNER_ID))  # Handle multiple owners
+    exempt_users.extend(map(int, OWNER_ID))
 elif OWNER_ID:
-    exempt_users.append(int(OWNER_ID))  # Handle single owner
-else:
-    exempt_users.append(6656608288)  # Default owner if none specified
+    exempt_users.append(int(OWNER_ID))
 
 # Enhanced NSFW keywords
 NSFW_KEYWORDS = [
@@ -85,8 +79,15 @@ async def process_media(message: Message):
     if not SE_CREDENTIALS_AVAILABLE:
         return
         
+    file_path = None
     try:
-        file_path = await message.download()
+        # Download file to specific directory
+        file_path = await message.download(file_name="downloads/")
+        
+        if not file_path or not os.path.exists(file_path):
+            print(f"Download failed for message {message.id}")
+            return
+            
         result = check_nsfw(file_path)
         
         if result:
@@ -115,8 +116,11 @@ async def process_media(message: Message):
     except Exception as e:
         print(f"Media processing error: {e}")
     finally:
-        if 'file_path' in locals() and os.path.exists(file_path):
-            os.remove(file_path)
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except:
+                pass
 
 @app.on_message(filters.command(["addnsfw"]) & filters.user(exempt_users))
 async def add_exempt(client, message: Message):
@@ -157,9 +161,12 @@ async def list_exempt(client, message: Message):
         users_list = "\n".join(f"• <code>{uid}</code>" for uid in exempt_users)
         await message.reply(f"🛡️ Exempt Users:\n{users_list}", parse_mode="HTML")
 
-@app.on_message(filters.media & ~filters.user(exempt_users))
+@app.on_message(
+    (filters.photo | filters.video | filters.document | filters.sticker | filters.animation) & 
+    ~filters.user(exempt_users)
+)
 async def media_filter(client, message: Message):
-    """Filter all media content"""
+    """Filter all media content including stickers"""
     await process_media(message)
 
 @app.on_message(filters.text & ~filters.user(exempt_users))
