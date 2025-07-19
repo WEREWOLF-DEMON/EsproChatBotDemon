@@ -6,184 +6,150 @@ import requests
 import re
 import asyncio
 import os
-import json
-from typing import Optional, List, Union
 
-# Sightengine Configuration
-SIGHTENGINE_USER = "1916313622"  # Replace with your actual API user
-SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual API secret
+# Sightengine API keys
+SIGHTENGINE_USER = "1916313622"
+SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
 SE_CREDENTIALS_AVAILABLE = bool(SIGHTENGINE_USER and SIGHTENGINE_SECRET)
 
-# Database to store exempt user IDs
-exempt_users: List[int] = []
+# Exempted users
+exempt_users = list(map(int, OWNER_ID if isinstance(OWNER_ID, (list, tuple)) else [OWNER_ID]))
 
-# Create downloads directory if it doesn't exist
-if not os.path.exists('downloads'):
-    os.makedirs('downloads')
-
-# Proper OWNER_ID handling from config.py
-if isinstance(OWNER_ID, (list, tuple)):
-    exempt_users.extend(map(int, OWNER_ID))
-elif OWNER_ID:
-    exempt_users.append(int(OWNER_ID))
-
-# Enhanced NSFW keywords
+# NSFW keywords (text filter)
 NSFW_KEYWORDS = [
-    # Sexual content
     "porn", "xxx", "adult", "nsfw", "sex", "fuck", "dick", "pussy", "boobs", "nude",
-    # Profanity
-    "shit", "asshole", "bitch", "bastard", "cunt", 
-    # Drugs and substances
-    "drugs?", "heroin", "cocaine", "weed", "marijuana", "hash", "lsd", "ecstasy",
-    "meth", "opium", "ganja", "charas", "bhang", "smack", "crack", "amphetamine",
-    # Violence
-    "kill", "murder", "rape", "terrorist", "bomb", "shoot", 
-    # Self-harm
+    "shit", "asshole", "bitch", "bastard", "cunt",
+    "drugs?", "heroin", "cocaine", "weed", "marijuana", "lsd", "ecstasy",
+    "meth", "opium", "ganja", "charas", "bhang", "smack", "crack",
+    "kill", "murder", "rape", "terrorist", "bomb", "shoot",
     "suicide", "selfharm", "cutting"
 ]
 
-def check_nsfw(file_path: str) -> Optional[dict]:
-    """Check content using Sightengine API"""
+# Downloads folder
+if not os.path.exists('downloads'):
+    os.makedirs('downloads')
+
+# Get random neko image
+def get_neko_image() -> str:
+    try:
+        response = requests.get("https://nekos.best/api/v2/neko", timeout=10)
+        data = response.json()
+        return data["results"][0]["url"]
+    except Exception as e:
+        print(f"Neko API Error: {e}")
+        return "https://telegra.ph/file/018d6002a0ad3aee739f4.jpg"
+
+# Check file with Sightengine
+def check_nsfw(file_path: str) -> dict:
     if not SE_CREDENTIALS_AVAILABLE:
-        return None
-        
-    params = {
-        'models': 'nudity-2.1,weapon,alcohol,recreational_drug,gore-2.0,violence,self-harm',
-        'api_user': SIGHTENGINE_USER,
-        'api_secret': SIGHTENGINE_SECRET
-    }
-    
+        return {}
+
     try:
         with open(file_path, 'rb') as f:
             files = {'media': f}
             response = requests.post(
-                'https://api.sightengine.com/1.0/check.json',
+                "https://api.sightengine.com/1.0/check.json",
                 files=files,
-                data=params,
-                timeout=10
+                data={
+                    'models': 'nudity-2.1,weapon,alcohol,recreational_drug,gore-2.0,violence,self-harm',
+                    'api_user': SIGHTENGINE_USER,
+                    'api_secret': SIGHTENGINE_SECRET
+                },
+                timeout=15
             )
-        result = response.json()
-        
-        if 'error' in result:
-            print(f"Sightengine Error: {result['error']['message']}")
-            return None
-            
-        return result
-        
+        return response.json()
     except Exception as e:
-        print(f"API Error: {e}")
-        return None
+        print(f"[NSFW API Error] {e}")
+        return {}
 
+# Media handler
 async def process_media(message: Message):
-    """Handle media content checking"""
-    if not SE_CREDENTIALS_AVAILABLE:
-        return
-        
-    file_path = None
-    try:
-        # Download file to specific directory
-        file_path = await message.download(file_name="downloads/")
-        
-        if not file_path or not os.path.exists(file_path):
-            print(f"Download failed for message {message.id}")
-            return
-            
-        result = check_nsfw(file_path)
-        
-        if result:
-            nsfw_detected = False
-            reasons = []
-            
-            checks = {
-                'sexual content': result.get('nudity', {}).get('sexual_activity', 0) > 0.7,
-                'violence': result.get('violence', {}).get('prob', 0) > 0.7,
-                'drugs': result.get('drug', {}).get('prob', 0) > 0.7,
-                'self-harm': result.get('selfharm', {}).get('prob', 0) > 0.7,
-                'gore': result.get('gore', {}).get('prob', 0) > 0.7
-            }
-            
-            for reason, detected in checks.items():
-                if detected:
-                    nsfw_detected = True
-                    reasons.append(reason)
-                
-            if nsfw_detected:
-                await message.delete()
-                warn = await message.reply(f"⚠️ Removed for: {', '.join(reasons)}")
-                await asyncio.sleep(10)
-                await warn.delete()
-                
-    except Exception as e:
-        print(f"Media processing error: {e}")
-    finally:
-        if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
+    file_path = await message.download(file_name="downloads/")
+    result = check_nsfw(file_path)
 
-@app.on_message(filters.command(["addnsfw"]) & filters.user(exempt_users))
-async def add_exempt(client, message: Message):
-    """Add user to NSFW exempt list"""
+    reasons = []
+
+    if result:
+        if result.get("nudity", {}).get("sexual_activity", 0) > 0.7:
+            reasons.append(f"🔞 Sexual ({result['nudity']['sexual_activity']*100:.1f}%)")
+        if result.get("violence", {}).get("prob", 0) > 0.7:
+            reasons.append(f"🔪 Violence ({result['violence']['prob']*100:.1f}%)")
+        if result.get("weapon", {}).get("prob", 0) > 0.7:
+            reasons.append(f"🔫 Weapon ({result['weapon']['prob']*100:.1f}%)")
+        if result.get("drug", {}).get("prob", 0) > 0.7:
+            reasons.append(f"💊 Drug ({result['drug']['prob']*100:.1f}%)")
+        if result.get("gore", {}).get("prob", 0) > 0.7:
+            reasons.append(f"🩸 Gore ({result['gore']['prob']*100:.1f}%)")
+
+    if reasons:
+        await message.delete()
+        neko_img = get_neko_image()
+        sender = await app.get_users(message.from_user.id)
+        caption = f"""
+⚠️ <b>NSFW Content Removed</b>
+👤 Name: <code>{sender.first_name}</code>
+🆔 ID: <code>{sender.id}</code>
+📛 Username: @{sender.username if sender.username else "N/A"}
+🚫 Reason(s): {" | ".join(reasons)}
+"""
+        sent = await message.chat.send_photo(neko_img, caption=caption, parse_mode="html")
+        await asyncio.sleep(15)
+        await sent.delete()
+
+    try:
+        os.remove(file_path)
+    except:
+        pass
+
+# Text NSFW filter
+@app.on_message(filters.text & ~filters.user(exempt_users))
+async def text_filter(_, message: Message):
+    text = message.text.lower()
+    if any(re.search(rf"\b{kw}\b", text) for kw in NSFW_KEYWORDS):
+        await message.delete()
+        warn = await message.reply("⚠️ NSFW message removed")
+        await asyncio.sleep(10)
+        await warn.delete()
+
+# Media filter for photos, docs, videos, stickers
+@app.on_message(
+    (filters.photo | filters.video | filters.document | filters.animation | filters.sticker)
+    & ~filters.user(exempt_users)
+)
+async def media_filter(_, message: Message):
+    await process_media(message)
+
+# Add exempt user
+@app.on_message(filters.command("addnsfw") & filters.user(exempt_users))
+async def add_exempt(_, message: Message):
     try:
         user_id = int(message.command[1])
         if user_id not in exempt_users:
             exempt_users.append(user_id)
-            await message.reply(f"✅ Added {user_id} to exempt list!")
+            await message.reply(f"✅ Added <code>{user_id}</code> to exempt list", parse_mode="html")
         else:
-            await message.reply(f"ℹ️ {user_id} is already exempt")
-    except (IndexError, ValueError):
+            await message.reply("ℹ️ Already in exempt list")
+    except:
         await message.reply("❌ Usage: /addnsfw <user_id>")
-    except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
 
-@app.on_message(filters.command(["remnsfw"]) & filters.user(exempt_users))
-async def remove_exempt(client, message: Message):
-    """Remove user from NSFW exempt list"""
+# Remove exempt user
+@app.on_message(filters.command("remnsfw") & filters.user(exempt_users))
+async def rem_exempt(_, message: Message):
     try:
         user_id = int(message.command[1])
         if user_id in exempt_users:
             exempt_users.remove(user_id)
-            await message.reply(f"✅ Removed {user_id} from exempt list!")
+            await message.reply(f"✅ Removed <code>{user_id}</code> from exempt list", parse_mode="html")
         else:
-            await message.reply(f"ℹ️ {user_id} is not in exempt list")
-    except (IndexError, ValueError):
+            await message.reply("ℹ️ User not in exempt list")
+    except:
         await message.reply("❌ Usage: /remnsfw <user_id>")
-    except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
 
-@app.on_message(filters.command(["listnsfw"]) & filters.user(exempt_users))
-async def list_exempt(client, message: Message):
-    """List all NSFW exempt users"""
+# List exempt users
+@app.on_message(filters.command("listnsfw") & filters.user(exempt_users))
+async def list_exempt(_, message: Message):
     if not exempt_users:
-        await message.reply("ℹ️ No exempt users!")
+        await message.reply("ℹ️ No exempt users")
     else:
-        users_list = "\n".join(f"• <code>{uid}</code>" for uid in exempt_users)
-        await message.reply(f"🛡️ Exempt Users:\n{users_list}", parse_mode="HTML")
-
-@app.on_message(
-    (filters.photo | filters.video | filters.document | filters.sticker | filters.animation) & 
-    ~filters.user(exempt_users)
-)
-async def media_filter(client, message: Message):
-    """Filter all media content including stickers"""
-    await process_media(message)
-
-@app.on_message(filters.text & ~filters.user(exempt_users))
-async def text_filter(client, message: Message):
-    """Filter text messages for NSFW content"""
-    text = message.text.lower()
-    if any(re.search(rf'\b{kw}\b', text) for kw in NSFW_KEYWORDS):
-        await message.delete()
-        warn = await message.reply("⚠️ Message removed for policy violation")
-        await asyncio.sleep(10)
-        await warn.delete()
-
-# Plugin information
-__PLUGIN__ = "nsfw_filter"
-__DESCRIPTION__ = "Advanced NSFW content filtering system"
-__COMMANDS__ = {
-    "addnsfw <user_id>": "Add user to exempt list",
-    "remnsfw <user_id>": "Remove user from exempt list",
-    "listnsfw": "List exempt users"
-}
+        text = "\n".join([f"• <code>{uid}</code>" for uid in exempt_users])
+        await message.reply(f"🛡️ Exempt List:\n{text}", parse_mode="html")
