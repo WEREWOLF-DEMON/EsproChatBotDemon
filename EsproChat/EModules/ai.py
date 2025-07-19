@@ -2,14 +2,14 @@ from EsproChat import app
 from pyrogram import filters
 from pyrogram.enums import ChatAction
 from pyrogram.types import Message
-from config import BOT_USERNAME, OWNER_ID, MONGO_URI
+from config import MONGO_URL, OWNER_ID
 import g4f
 from pymongo import MongoClient
 import asyncio
 import re
 
 # ✅ MongoDB setup
-mongo = MongoClient(MONGO_URI)
+mongo = MongoClient(MONGO_URL)
 chatdb = mongo.ChatDB.chat_data
 
 # ❌ Ignore if replying to or mentioning someone else
