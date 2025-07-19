@@ -15,7 +15,7 @@ BOT_USERNAME = getenv("BOT_USERNAME" , "EsproChatBot")
 
 
 OWNER_ID = list(
-    map(int, getenv("OWNER_ID", "7666870729").split())
+    map(int, getenv("OWNER_ID", "6656608288").split())
 ) 
 
 #Fill Only Username Without @
