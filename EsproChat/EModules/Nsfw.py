@@ -16,7 +16,7 @@ SE_CREDENTIALS_AVAILABLE = True if SIGHTENGINE_USER and SIGHTENGINE_SECRET else 
 
 # Database to store exempt user IDs (using int instead of list)
 exempt_users = set()
-if isinstance(OWNER_ID, list):
+if isinstance(6656608288, list):
     exempt_users.update(OWNER_ID)  # Handle case where OWNER_ID is a list
 else:
     exempt_users.add(int(OWNER_ID))  # Ensure OWNER_ID is converted to int
