@@ -1,13 +1,18 @@
 from EsproChat import app
 from pyrogram import filters
 from pyrogram.types import Message
-from config import OWNER_ID, SIGHTENGINE_USER, SIGHTENGINE_SECRET
+from config import OWNER_ID  # OWNER_ID must be in config.py
 import requests
 import re
 import asyncio
 import os
 import json
 from typing import Optional
+
+# Sightengine Configuration (all in code, no need for config.py entries)
+SIGHTENGINE_USER = "1916313622"  # Replace with your actual Sightengine API user
+SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual Sightengine API secret
+SE_CREDENTIALS_AVAILABLE = True if SIGHTENGINE_USER and SIGHTENGINE_SECRET else False
 
 # Database to store exempt user IDs
 exempt_users = set()
@@ -30,6 +35,9 @@ NSFW_KEYWORDS = [
 
 def check_nsfw(file_path: str) -> Optional[dict]:
     """Check content using Sightengine API"""
+    if not SE_CREDENTIALS_AVAILABLE:
+        return None
+        
     params = {
         'models': 'nudity-2.1,weapon,alcohol,recreational_drug,gore-2.0,violence,self-harm',
         'api_user': SIGHTENGINE_USER,
@@ -47,7 +55,6 @@ def check_nsfw(file_path: str) -> Optional[dict]:
             )
         result = response.json()
         
-        # Check for errors
         if 'error' in result:
             print(f"Sightengine Error: {result['error']['message']}")
             return None
@@ -60,34 +67,30 @@ def check_nsfw(file_path: str) -> Optional[dict]:
 
 async def process_media(message: Message):
     """Handle media content checking"""
+    if not SE_CREDENTIALS_AVAILABLE:
+        return
+        
     try:
         file_path = await message.download()
         result = check_nsfw(file_path)
         
         if result:
-            # Check different NSFW categories
             nsfw_detected = False
             reasons = []
             
-            # Nudity detection
-            if result.get('nudity', {}).get('sexual_activity', 0) > 0.7:
-                nsfw_detected = True
-                reasons.append("sexual content")
-                
-            # Violence detection
-            if result.get('violence', {}).get('prob', 0) > 0.7:
-                nsfw_detected = True
-                reasons.append("violent content")
-                
-            # Drug detection
-            if result.get('drug', {}).get('prob', 0) > 0.7:
-                nsfw_detected = True
-                reasons.append("drug-related content")
-                
-            # Self-harm detection
-            if result.get('selfharm', {}).get('prob', 0) > 0.7:
-                nsfw_detected = True
-                reasons.append("self-harm content")
+            # Check different NSFW categories
+            checks = {
+                'sexual content': result.get('nudity', {}).get('sexual_activity', 0) > 0.7,
+                'violence': result.get('violence', {}).get('prob', 0) > 0.7,
+                'drugs': result.get('drug', {}).get('prob', 0) > 0.7,
+                'self-harm': result.get('selfharm', {}).get('prob', 0) > 0.7,
+                'gore': result.get('gore', {}).get('prob', 0) > 0.7
+            }
+            
+            for reason, detected in checks.items():
+                if detected:
+                    nsfw_detected = True
+                    reasons.append(reason)
                 
             if nsfw_detected:
                 await message.delete()
@@ -102,7 +105,7 @@ async def process_media(message: Message):
     except Exception as e:
         print(f"Media processing error: {e}")
     finally:
-        if os.path.exists(file_path):
+        if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
 
 @app.on_message(filters.command(["addnsfw"]) & filters.user(OWNER_ID))
@@ -141,8 +144,7 @@ async def list_exempt(client, message: Message):
 @app.on_message(filters.media & ~filters.user(exempt_users))
 async def media_filter(client, message: Message):
     """Filter all media content"""
-    if SIGHTENGINE_USER and SIGHTENGINE_SECRET:
-        await process_media(message)
+    await process_media(message)
 
 @app.on_message(filters.text & ~filters.user(exempt_users))
 async def text_filter(client, message: Message):
@@ -156,7 +158,7 @@ async def text_filter(client, message: Message):
 
 # Plugin information
 __PLUGIN__ = "nsfw_filter"
-__DESCRIPTION__ = "Advanced NSFW content filtering using Sightengine API"
+__DESCRIPTION__ = "Advanced NSFW content filtering system"
 __COMMANDS__ = {
     "addnsfw <user_id>": "Add user to exempt list (Owner only)",
     "remnsfw <user_id>": "Remove user from exempt list (Owner only)",
