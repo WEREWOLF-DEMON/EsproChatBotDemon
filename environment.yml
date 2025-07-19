@@ -12,3 +12,6 @@ dependencies:
   - partd
   - bokeh
   - dask
+  - requests
+  - pyrogram tgcrypto
+  - aiohttp
