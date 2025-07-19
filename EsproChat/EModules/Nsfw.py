@@ -7,7 +7,7 @@ import re
 import asyncio
 import os
 import json
-from typing import Optional
+from typing import Optional, List, Union
 
 # Required Modules:
 # 1. pyrogram - Telegram bot framework
@@ -22,14 +22,16 @@ SIGHTENGINE_USER = "1916313622"  # Replace with your actual API user
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual API secret
 SE_CREDENTIALS_AVAILABLE = bool(SIGHTENGINE_USER and SIGHTENGINE_SECRET)
 
-# Database to store exempt user IDs
-exempt_users = set()
+# Database to store exempt user IDs (initialize as list)
+exempt_users: List[int] = []
 
 # Proper OWNER_ID handling from config.py
 if isinstance(OWNER_ID, (list, tuple)):
-    exempt_users.update(map(int, OWNER_ID))  # Handle multiple owners
+    exempt_users.extend(map(int, OWNER_ID))  # Handle multiple owners
+elif OWNER_ID:
+    exempt_users.append(int(OWNER_ID))  # Handle single owner
 else:
-    exempt_users.add(int(6656608288))  # Handle single owner
+    exempt_users.append(6656608288)  # Default owner if none specified
 
 # Enhanced NSFW keywords
 NSFW_KEYWORDS = [
@@ -116,31 +118,37 @@ async def process_media(message: Message):
         if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
 
-@app.on_message(filters.command(["addnsfw"]) & filters.user(OWNER_ID))
+@app.on_message(filters.command(["addnsfw"]) & filters.user(exempt_users))
 async def add_exempt(client, message: Message):
     """Add user to NSFW exempt list"""
     try:
         user_id = int(message.command[1])
-        exempt_users.add(user_id)
-        await message.reply(f"✅ Added {user_id} to exempt list!")
+        if user_id not in exempt_users:
+            exempt_users.append(user_id)
+            await message.reply(f"✅ Added {user_id} to exempt list!")
+        else:
+            await message.reply(f"ℹ️ {user_id} is already exempt")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /addnsfw <user_id>")
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
 
-@app.on_message(filters.command(["remnsfw"]) & filters.user(OWNER_ID))
+@app.on_message(filters.command(["remnsfw"]) & filters.user(exempt_users))
 async def remove_exempt(client, message: Message):
     """Remove user from NSFW exempt list"""
     try:
         user_id = int(message.command[1])
-        exempt_users.discard(user_id)
-        await message.reply(f"✅ Removed {user_id} from exempt list!")
+        if user_id in exempt_users:
+            exempt_users.remove(user_id)
+            await message.reply(f"✅ Removed {user_id} from exempt list!")
+        else:
+            await message.reply(f"ℹ️ {user_id} is not in exempt list")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /remnsfw <user_id>")
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
 
-@app.on_message(filters.command(["listnsfw"]) & filters.user(OWNER_ID))
+@app.on_message(filters.command(["listnsfw"]) & filters.user(exempt_users))
 async def list_exempt(client, message: Message):
     """List all NSFW exempt users"""
     if not exempt_users:
