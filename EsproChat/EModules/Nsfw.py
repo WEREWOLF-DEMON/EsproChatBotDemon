@@ -1,7 +1,7 @@
 from EsproChat import app
 from pyrogram import filters
 from pyrogram.types import Message
-from config import OWNER_ID  # OWNER_ID must be in config.py
+from config import OWNER_ID
 import requests
 import re
 import asyncio
@@ -9,14 +9,17 @@ import os
 import json
 from typing import Optional
 
-# Sightengine Configuration (all in code, no need for config.py entries)
-SIGHTENGINE_USER = "1916313622"  # Replace with your actual Sightengine API user
+# Sightengine Configuration
+SIGHTENGINE_USER = "1916313622"      # Replace with your actual Sightengine API user
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual Sightengine API secret
 SE_CREDENTIALS_AVAILABLE = True if SIGHTENGINE_USER and SIGHTENGINE_SECRET else False
 
-# Database to store exempt user IDs
+# Database to store exempt user IDs (using int instead of list)
 exempt_users = set()
-exempt_users.add(OWNER_ID)  # Owner is exempt by default
+if isinstance(OWNER_ID, list):
+    exempt_users.update(OWNER_ID)  # Handle case where OWNER_ID is a list
+else:
+    exempt_users.add(int(OWNER_ID))  # Ensure OWNER_ID is converted to int
 
 # Enhanced NSFW keywords
 NSFW_KEYWORDS = [
