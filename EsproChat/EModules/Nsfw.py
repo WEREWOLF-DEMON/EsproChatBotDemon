@@ -9,17 +9,27 @@ import os
 import json
 from typing import Optional
 
-# Sightengine Configuration
-SIGHTENGINE_USER = "1916313622"      # Replace with your actual Sightengine API user
-SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual Sightengine API secret
-SE_CREDENTIALS_AVAILABLE = True if SIGHTENGINE_USER and SIGHTENGINE_SECRET else False
+# Required Modules:
+# 1. pyrogram - Telegram bot framework
+# 2. requests - API calls
+# 3. re - Regular expressions
+# 4. asyncio - Async operations
+# 5. os - File operations
+# 6. json - JSON handling
 
-# Database to store exempt user IDs (using int instead of list)
+# Sightengine Configuration
+SIGHTENGINE_USER = "1916313622"  # Replace with your actual API user
+SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"  # Replace with your actual API secret
+SE_CREDENTIALS_AVAILABLE = bool(SIGHTENGINE_USER and SIGHTENGINE_SECRET)
+
+# Database to store exempt user IDs
 exempt_users = set()
-if isinstance(6656608288, list):
-    exempt_users.update(OWNER_ID)  # Handle case where OWNER_ID is a list
+
+# Proper OWNER_ID handling from config.py
+if isinstance(OWNER_ID, (list, tuple)):
+    exempt_users.update(map(int, OWNER_ID))  # Handle multiple owners
 else:
-    exempt_users.add(int(OWNER_ID))  # Ensure OWNER_ID is converted to int
+    exempt_users.add(int(6656608288))  # Handle single owner
 
 # Enhanced NSFW keywords
 NSFW_KEYWORDS = [
@@ -81,7 +91,6 @@ async def process_media(message: Message):
             nsfw_detected = False
             reasons = []
             
-            # Check different NSFW categories
             checks = {
                 'sexual content': result.get('nudity', {}).get('sexual_activity', 0) > 0.7,
                 'violence': result.get('violence', {}).get('prob', 0) > 0.7,
@@ -97,11 +106,7 @@ async def process_media(message: Message):
                 
             if nsfw_detected:
                 await message.delete()
-                reason_text = ", ".join(reasons)
-                warn = await message.reply(
-                    f"⚠️ Content removed for: {reason_text}\n"
-                    "This violates our community guidelines."
-                )
+                warn = await message.reply(f"⚠️ Removed for: {', '.join(reasons)}")
                 await asyncio.sleep(10)
                 await warn.delete()
                 
@@ -117,7 +122,7 @@ async def add_exempt(client, message: Message):
     try:
         user_id = int(message.command[1])
         exempt_users.add(user_id)
-        await message.reply(f"✅ Added {user_id} to NSFW exempt list!")
+        await message.reply(f"✅ Added {user_id} to exempt list!")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /addnsfw <user_id>")
     except Exception as e:
@@ -129,7 +134,7 @@ async def remove_exempt(client, message: Message):
     try:
         user_id = int(message.command[1])
         exempt_users.discard(user_id)
-        await message.reply(f"✅ Removed {user_id} from NSFW exempt list!")
+        await message.reply(f"✅ Removed {user_id} from exempt list!")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /remnsfw <user_id>")
     except Exception as e:
@@ -142,7 +147,7 @@ async def list_exempt(client, message: Message):
         await message.reply("ℹ️ No exempt users!")
     else:
         users_list = "\n".join(f"• <code>{uid}</code>" for uid in exempt_users)
-        await message.reply(f"🛡️ NSFW Exempt Users:\n{users_list}", parse_mode="HTML")
+        await message.reply(f"🛡️ Exempt Users:\n{users_list}", parse_mode="HTML")
 
 @app.on_message(filters.media & ~filters.user(exempt_users))
 async def media_filter(client, message: Message):
@@ -155,7 +160,7 @@ async def text_filter(client, message: Message):
     text = message.text.lower()
     if any(re.search(rf'\b{kw}\b', text) for kw in NSFW_KEYWORDS):
         await message.delete()
-        warn = await message.reply("⚠️ Message removed for violating community guidelines!")
+        warn = await message.reply("⚠️ Message removed for policy violation")
         await asyncio.sleep(10)
         await warn.delete()
 
@@ -163,7 +168,7 @@ async def text_filter(client, message: Message):
 __PLUGIN__ = "nsfw_filter"
 __DESCRIPTION__ = "Advanced NSFW content filtering system"
 __COMMANDS__ = {
-    "addnsfw <user_id>": "Add user to exempt list (Owner only)",
-    "remnsfw <user_id>": "Remove user from exempt list (Owner only)",
-    "listnsfw": "List exempt users (Owner only)"
+    "addnsfw <user_id>": "Add user to exempt list",
+    "remnsfw <user_id>": "Remove user from exempt list",
+    "listnsfw": "List exempt users"
 }
