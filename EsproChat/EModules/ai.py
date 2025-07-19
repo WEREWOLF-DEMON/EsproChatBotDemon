@@ -77,25 +77,25 @@ async def send_context_sticker(client, message, text):
     # Romantic stickers
     if any(word in text for word in ["pyaar", "love", "chumma", "pyar", "hug"]):
         sticker_id = random.choice([
-            "CAACAgUAAxkBAAEL...",  # Replace with actual sticker IDs
-            "CAACAgUAAxkBAAEL...",
-            "CAACAgUAAxkBAAEL..."
+            "CAACAgUAAxkBAAICbWh7FKwivGnaDMUYtfTgUIOqeYVoAAIkGAACJtxwVxlSuVnRcaJbHgQ",  # Replace with actual sticker IDs
+            "CAACAgUAAxkBAAICcGh7FNHNNsQ08dfKy6hJ_Sut_ZB0AAJsGAACLn_gV6C4NxtVTJJ-HgQ",
+            "CAACAgUAAxkBAAICdGh7FO-X_IcyVry1J5waNvRJPBJbAALpFAAC_4ThVwuGqcXQHPlQHgQ"
         ])
     
     # Shy stickers for flirty messages
     elif any(word in text for word in ["cute", "beautiful", "sexy", "hot"]):
         sticker_id = random.choice([
-            "CAACAgUAAxkBAAEL...",
-            "CAACAgUAAxkBAAEL...",
-            "CAACAgUAAxkBAAEL..."
+            "CAACAgUAAxkBAAICd2h7FRA-rTHHwwuThaaCBe_iL3QAAycQAAIxiXhUOHDGuGPyIdMeBA",
+            "CAACAgEAAxkBAAICemh7FTtL5LoJGj61Jf705Sttt2XvAAKbAwACIZGZR_UlcXmwWjWeHgQ",
+            "CAACAgQAAxkBAAICfmh7FWZSHFJEXnW0SqMyGjtF7GBCAALXEQACMO4JUpqFa3kNXiSNHgQ"
         ])
     
     # Happy stickers
     elif any(word in text for word in ["happy", "khush", "achha", "good"]):
         sticker_id = random.choice([
-            "CAACAgUAAxkBAAEL...",
-            "CAACAgUAAxkBAAEL...",
-            "CAACAgUAAxkBAAEL..."
+            "CAACAgQAAxkBAAICgWh7Fhq9p4BdQnaqeRmIeIf1sHHkAAIMCgACKM7RUsygu40CSdsTHgQ",
+            "CAACAgUAAxkBAAIChGh7FkFle5KZYUDCAAHOrP5JnoohEAACGBUAAuWteVdCjQ7H8dJbBB4E",
+            "CAACAgUAAxkBAAICiGh7FqEtpn-u4ibZf88L6UtC2HnuAAKUFgACf0WAVfN0pe7cEmo6HgQ"
         ])
     else:
         return False
