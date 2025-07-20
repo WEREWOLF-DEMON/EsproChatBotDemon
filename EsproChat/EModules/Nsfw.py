@@ -9,7 +9,7 @@ import os
 import tempfile
 import random
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 # Setup logging
 logging.basicConfig(
@@ -23,7 +23,7 @@ SIGHTENGINE_USER = "1916313622"
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
 NEKOS_API = "https://nekos.best/api/v2/neko"
 
-# Database to store authorized users - using tuples instead of sets
+# Database to store authorized users - using tuples for Pyrogram compatibility
 authorized_users: Tuple[int, ...] = ()
 exempt_users: Tuple[int, ...] = ()
 
