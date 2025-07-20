@@ -9,7 +9,7 @@ import os
 import tempfile
 import random
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 # Setup logging
 logging.basicConfig(
