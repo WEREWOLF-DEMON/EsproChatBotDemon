@@ -8,10 +8,10 @@ import asyncio
 import os
 import tempfile
 import random
-from typing import List, Optional
+import logging
+from typing import List, Optional, Tuple
 
 # Setup logging
-import logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -23,17 +23,17 @@ SIGHTENGINE_USER = "1916313622"
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
 NEKOS_API = "https://nekos.best/api/v2/neko"
 
-# Database to store authorized users
-authorized_users = set()
-exempt_users = set()
+# Database to store authorized users - using tuples instead of sets
+authorized_users: Tuple[int, ...] = ()
+exempt_users: Tuple[int, ...] = ()
 
 # Initialize with owner from config
 if isinstance(OWNER_ID, (list, tuple)):
-    authorized_users.update(map(int, OWNER_ID))
-    exempt_users.update(map(int, OWNER_ID))
+    authorized_users = tuple(map(int, OWNER_ID))
+    exempt_users = tuple(map(int, OWNER_ID))
 elif OWNER_ID:
-    authorized_users.add(int(OWNER_ID))
-    exempt_users.add(int(OWNER_ID))
+    authorized_users = (int(OWNER_ID),)
+    exempt_users = (int(OWNER_ID),)
 
 # Enhanced NSFW keywords
 NSFW_KEYWORDS = [
@@ -146,12 +146,22 @@ async def process_media(message: Message):
             except:
                 pass
 
+def update_authorized_users(new_user: int, action: str):
+    """Helper function to update authorized users"""
+    global authorized_users
+    current = list(authorized_users)
+    if action == "add" and new_user not in current:
+        current.append(new_user)
+    elif action == "remove" and new_user in current:
+        current.remove(new_user)
+    authorized_users = tuple(current)
+
 @app.on_message(filters.command(["addauth"]) & filters.user(exempt_users))
 async def add_auth(client, message: Message):
     """Add user to authorized list"""
     try:
         user_id = int(message.command[1])
-        authorized_users.add(user_id)
+        update_authorized_users(user_id, "add")
         await message.reply(f"✅ Added {user_id} to authorized list!")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /addauth <user_id>")
@@ -163,7 +173,7 @@ async def remove_auth(client, message: Message):
     """Remove user from authorized list"""
     try:
         user_id = int(message.command[1])
-        authorized_users.discard(user_id)
+        update_authorized_users(user_id, "remove")
         await message.reply(f"✅ Removed {user_id} from authorized list!")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /remauth <user_id>")
