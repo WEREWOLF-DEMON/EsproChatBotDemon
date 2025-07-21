@@ -1,219 +1,98 @@
-from EsproChat import app
-from pyrogram import filters
-from pyrogram.types import Message
-from config import OWNER_ID
 import requests
-import re
-import asyncio
+from pyrogram import Client, filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from config import OWNER_ID, NSFW_API_USER, NSFW_API_SECRET
 import os
-import tempfile
-import logging
-from typing import Tuple, List
+import aiofiles
+from EsproChat.database.nsfwauth import add_auth, rm_auth, get_auth
 
-# Setup logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Supported Media Types
+MEDIA_TYPES = ["photo", "video", "animation", "sticker"]
 
-# API Configurations
-SIGHTENGINE_USER = "1916313622"
-SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
-NEKOS_API = "https://nekos.best/api/v2/neko"
+async def detect_nsfw(path: str) -> dict:
+    url = "https://api.sightengine.com/1.0/check.json"
+    with open(path, "rb") as f:
+        files = {'media': f}
+        data = {
+            'models': 'nudity,wad,offensive,text-content',
+            'api_user': 1916313622,
+            'api_secret': frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA,
+        }
+        response = requests.post(url, files=files, data=data)
+        return response.json()
 
-# Initialize users - using tuple for Pyrogram compatibility
-def get_user_ids(ids):
-    if isinstance(ids, list):
-        return tuple(int(i) for i in ids)
-    return (int(ids),) if ids else ()
-
-# Owner IDs from config.py
-owner_ids = get_user_ids(OWNER_ID)
-
-# Authorized users starts with owners, stored as tuple
-authorized_users = owner_ids
-
-# Ensure downloads directory exists
-os.makedirs('downloads', exist_ok=True)
-
-# NSFW detection thresholds
-NSFW_THRESHOLDS = {
-    'sexual_activity': 0.15,
-    'sexual_display': 0.15,
-    'weapon': 0.25,
-    'drug': 0.25,
-    'violence': 0.25
-}
-
-# NSFW keywords
-NSFW_KEYWORDS = [
-    r"\b(porn|xxx|adult|nsfw|sex|fuck|dick|pussy|boobs|nude|naked)\b",
-    r"\b(shit|asshole|bitch|bastard|cunt|whore|slut)\b",
-    r"\b(drugs|heroin|cocaine|weed|marijuana|hash|lsd|ecstasy|meth)\b",
-    r"\b(kill|murder|rape|terrorist|bomb|shoot|gun|attack)\b",
-    r"\b(suicide|selfharm|cutting|hang|die)\b"
-]
-
-async def get_random_neko():
-    """Get random neko image from API"""
+async def neko_image() -> str:
     try:
-        response = await asyncio.to_thread(requests.get, NEKOS_API, timeout=5)
-        return response.json()['results'][0]['url']
+        r = requests.get("https://nekos.best/api/v2/neko")
+        return r.json()["results"][0]["url"]
+    except:
+        return "https://nekos.best/api/v2/neko"
+
+@Client.on_message(filters.group & filters.media)
+async def nsfw_filter(client: Client, message: Message):
+    user = message.from_user
+    chat_id = message.chat.id
+
+    # Authorized check
+    auth = await get_auth(chat_id)
+    if user and (user.id == OWNER_ID or str(user.id) in auth):
+        return
+
+    # Media download
+    try:
+        file_path = f"downloads/{message.media_group_id or message.id}.temp"
+        await client.download_media(message, file_path)
     except Exception as e:
-        logger.error(f"Neko API Error: {e}")
-        return None
+        return
 
-async def check_nsfw(file_path: str) -> bool:
-    """Check media for NSFW content"""
+    # NSFW Detection
     try:
-        with open(file_path, 'rb') as f:
-            response = await asyncio.to_thread(
-                requests.post,
-                'https://api.sightengine.com/1.0/check.json',
-                files={'media': f},
-                data={
-                    'models': 'nudity-2.1,wad,drug,violence',
-                    'api_user': SIGHTENGINE_USER,
-                    'api_secret': SIGHTENGINE_SECRET
-                },
-                timeout=10
+        result = await detect_nsfw(file_path)
+        rating = result.get("nudity", {}).get("raw", 0)
+        wad = result.get("weapon", 0) + result.get("alcohol", 0) + result.get("drugs", 0)
+        offensive = result.get("offensive", {}).get("prob`, 0)
+
+        # Delete if NSFW
+        if rating > 0.4 or wad > 0.4 or offensive > 0.5:
+            await message.delete()
+
+            neko = await neko_image()
+            mention = f"<a href=\"tg://user?id={user.id}\">{user.first_name}</a>"
+            buttons = InlineKeyboardMarkup([
+                [InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{client.me.username}?startgroup=true")]
+            ])
+
+            await message.reply_photo(
+                photo=neko,
+                caption=(
+                    f"<b>🔞 NSFW Content Detected and Removed</b>\n\n"
+                    f"👤 User: {mention} [{user.id}]\n"
+                    f"🏷 Username: @{user.username if user.username else 'N/A'}\n"
+                    f"📂 Content Type: {message.media.value}\n"
+                    f"📍 Reason: {'Nudity' if rating > 0.4 else 'Weapon/Alcohol/Drugs' if wad > 0.4 else 'Offensive'}"
+                ),
+                reply_markup=buttons,
+                parse_mode="html"
             )
-        result = response.json()
-        
-        for key, threshold in NSFW_THRESHOLDS.items():
-            if result.get('nudity', {}).get(key, 0) > threshold:
-                return True
-            if result.get(key, 0) > threshold:
-                return True
-        return False
     except Exception as e:
-        logger.error(f"NSFW Check Error: {e}")
-        return False
-
-async def take_action(message: Message, content_type: str):
-    """Delete content and send warning"""
-    try:
-        user = message.from_user
-        neko_url = await get_random_neko()
-        
-        await message.delete()
-        
-        warning_msg = (
-            f"⚠️ <b>Content Removed</b> ⚠️\n\n"
-            f"• <b>User:</b> {user.mention if user else 'Unknown'}\n"
-            f"• <b>Type:</b> {content_type}\n"
-            f"• <b>Action:</b> Removed for policy violation\n\n"
-            "<i>This content crossed our safety thresholds</i>"
-        )
-        
-        if neko_url:
-            sent_msg = await message.reply_photo(
-                photo=neko_url,
-                caption=warning_msg,
-                parse_mode="HTML"
-            )
-        else:
-            sent_msg = await message.reply(
-                warning_msg,
-                parse_mode="HTML"
-            )
-            
-        await asyncio.sleep(8)
-        await sent_msg.delete()
-        
-    except Exception as e:
-        logger.error(f"Action Error: {e}")
-
-async def process_media(message: Message):
-    """Process media content checking"""
-    file_path = None
-    try:
-        file_path = await message.download(file_name='downloads/')
-        if file_path and await check_nsfw(file_path):
-            content_type = "Media"
-            if message.sticker:
-                content_type = "Sticker"
-            elif message.animation:
-                content_type = "GIF"
-            elif message.video:
-                content_type = "Video"
-            elif message.photo:
-                content_type = "Photo"
-                
-            await take_action(message, content_type)
-    except Exception as e:
-        logger.error(f"Media Process Error: {e}")
+        pass
     finally:
-        if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-def update_authorized_users(new_user: int, action: str):
-    """Update authorized users list"""
-    global authorized_users
-    current = list(authorized_users)
-    if action == "add" and new_user not in current:
-        current.append(new_user)
-    elif action == "remove" and new_user in current:
-        current.remove(new_user)
-    authorized_users = tuple(current)
+# Authorization Commands
+@Client.on_message(filters.command("addauth") & filters.user(OWNER_ID))
+async def add_auth_user(_, message: Message):
+    if not message.reply_to_message:
+        return await message.reply("Reply to a user to authorize.")
+    uid = message.reply_to_message.from_user.id
+    await add_auth(message.chat.id, uid)
+    await message.reply(f"✅ Authorized {uid} to post NSFW.")
 
-@app.on_message(filters.command("authorize") & filters.user(owner_ids))
-async def authorize_user(_, message: Message):
-    """Add user to authorized list"""
-    try:
-        user_id = int(message.command[1])
-        update_authorized_users(user_id, "add")
-        await message.reply(f"✅ Authorized user {user_id}")
-    except (IndexError, ValueError):
-        await message.reply("❌ Usage: /authorize <user_id>")
-    except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
-
-@app.on_message(filters.command("unauthorize") & filters.user(owner_ids))
-async def unauthorize_user(_, message: Message):
-    """Remove user from authorized list"""
-    try:
-        user_id = int(message.command[1])
-        update_authorized_users(user_id, "remove")
-        await message.reply(f"✅ Unauthorized user {user_id}")
-    except (IndexError, ValueError):
-        await message.reply("❌ Usage: /unauthorize <user_id>")
-    except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
-
-@app.on_message(filters.command("authorized") & filters.user(owner_ids))
-async def list_authorized(_, message: Message):
-    """List all authorized users"""
-    if not authorized_users:
-        await message.reply("ℹ️ No authorized users!")
-    else:
-        users_list = "\n".join(f"• <code>{uid}</code>" for uid in authorized_users)
-        await message.reply(f"🛡️ Authorized Users:\n{users_list}", parse_mode="HTML")
-
-@app.on_message(
-    (filters.photo | filters.video | filters.document | 
-     filters.sticker | filters.animation) & 
-    ~filters.user(authorized_users)  # Now using tuple which is hashable
-)
-async def media_filter(_, message: Message):
-    """Filter media for unauthorized users"""
-    await process_media(message)
-
-@app.on_message(filters.text & ~filters.user(authorized_users))  # Using tuple
-async def text_filter(_, message: Message):
-    """Filter text for unauthorized users"""
-    text = message.text.lower()
-    if any(re.search(pattern, text) for pattern in NSFW_KEYWORDS):
-        await take_action(message, "Text Message")
-
-__PLUGIN__ = "nsfw_protector"
-__DESCRIPTION__ = "Advanced NSFW content filtering with authorization system"
-__COMMANDS__ = {
-    "authorize <user_id>": "Authorize user to bypass filters (Owner only)",
-    "unauthorize <user_id>": "Remove user authorization (Owner only)",
-    "authorized": "List authorized users (Owner only)"
-}
+@Client.on_message(filters.command("rmauth") & filters.user(OWNER_ID))
+async def rm_auth_user(_, message: Message):
+    if not message.reply_to_message:
+        return await message.reply("Reply to a user to remove auth.")
+    uid = message.reply_to_message.from_user.id
+    await rm_auth(message.chat.id, uid)
+    await message.reply(f"❌ Removed {uid} from authorized list.")
