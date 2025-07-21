@@ -8,7 +8,7 @@ import asyncio
 import os
 import tempfile
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 
 # Setup logging
 logging.basicConfig(
@@ -21,9 +21,16 @@ logger = logging.getLogger(__name__)
 SIGHTENGINE_USER = "1916313622"
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
 
-# Database to store authorized users
-authorized_users: Tuple[int, ...] = (int(OWNER_ID),) if OWNER_ID else ()
-exempt_users: Tuple[int, ...] = (int(OWNER_ID),) if OWNER_ID else ()
+# Initialize authorized users properly handling both single ID and list of IDs
+def initialize_users(owner_id: Union[int, List[int], default: Tuple[int, ...] = ()) -> Tuple[int, ...]:
+    if isinstance(owner_id, list):
+        return tuple(int(i) for i in owner_id)
+    elif owner_id:
+        return (int(owner_id),)
+    return default
+
+authorized_users: Tuple[int, ...] = initialize_users(OWNER_ID)
+exempt_users: Tuple[int, ...] = initialize_users(OWNER_ID)
 
 # Create downloads directory if it doesn't exist
 os.makedirs('downloads', exist_ok=True)
@@ -76,9 +83,9 @@ async def take_action(message: Message, content_type: str):
         # Get user info
         user = message.from_user
         user_info = (
-            f"👤 User: {user.first_name}\n"
+            f"👤 User: {user.first_name or 'Unknown'}\n"
             f"🆔 ID: {user.id}\n"
-            f"✉️ Username: @{user.username if user.username else 'N/A'}\n"
+            f"✉️ Username: @{user.username or 'N/A'}\n"
             f"📛 Content: {content_type}"
         )
         
