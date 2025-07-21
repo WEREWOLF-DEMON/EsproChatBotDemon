@@ -22,15 +22,17 @@ SIGHTENGINE_USER = "1916313622"
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
 NEKOS_API = "https://nekos.best/api/v2/neko"
 
-# Initialize users from config.py
+# Initialize users - using tuple for Pyrogram compatibility
 def get_user_ids(ids):
     if isinstance(ids, list):
         return tuple(int(i) for i in ids)
     return (int(ids),) if ids else ()
 
-# Owner and authorized users (initialize from config)
+# Owner IDs from config.py
 owner_ids = get_user_ids(OWNER_ID)
-authorized_users = set(owner_ids)  # Starts with just owners
+
+# Authorized users starts with owners, stored as tuple
+authorized_users = owner_ids
 
 # Ensure downloads directory exists
 os.makedirs('downloads', exist_ok=True)
@@ -149,21 +151,23 @@ async def process_media(message: Message):
             except:
                 pass
 
+def update_authorized_users(new_user: int, action: str):
+    """Update authorized users list"""
+    global authorized_users
+    current = list(authorized_users)
+    if action == "add" and new_user not in current:
+        current.append(new_user)
+    elif action == "remove" and new_user in current:
+        current.remove(new_user)
+    authorized_users = tuple(current)
+
 @app.on_message(filters.command("authorize") & filters.user(owner_ids))
 async def authorize_user(_, message: Message):
     """Add user to authorized list"""
     try:
-        if len(message.command) < 2:
-            await message.reply("❌ Usage: /authorize <user_id>")
-            return
-            
         user_id = int(message.command[1])
-        if user_id in authorized_users:
-            await message.reply(f"ℹ️ User {user_id} is already authorized")
-        else:
-            authorized_users.add(user_id)
-            await message.reply(f"✅ Authorized user {user_id}")
-            
+        update_authorized_users(user_id, "add")
+        await message.reply(f"✅ Authorized user {user_id}")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /authorize <user_id>")
     except Exception as e:
@@ -173,17 +177,9 @@ async def authorize_user(_, message: Message):
 async def unauthorize_user(_, message: Message):
     """Remove user from authorized list"""
     try:
-        if len(message.command) < 2:
-            await message.reply("❌ Usage: /unauthorize <user_id>")
-            return
-            
         user_id = int(message.command[1])
-        if user_id not in authorized_users:
-            await message.reply(f"ℹ️ User {user_id} is not authorized")
-        else:
-            authorized_users.discard(user_id)
-            await message.reply(f"✅ Unauthorized user {user_id}")
-            
+        update_authorized_users(user_id, "remove")
+        await message.reply(f"✅ Unauthorized user {user_id}")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /unauthorize <user_id>")
     except Exception as e:
@@ -201,13 +197,13 @@ async def list_authorized(_, message: Message):
 @app.on_message(
     (filters.photo | filters.video | filters.document | 
      filters.sticker | filters.animation) & 
-    ~filters.user(authorized_users)
+    ~filters.user(authorized_users)  # Now using tuple which is hashable
 )
 async def media_filter(_, message: Message):
     """Filter media for unauthorized users"""
     await process_media(message)
 
-@app.on_message(filters.text & ~filters.user(authorized_users))
+@app.on_message(filters.text & ~filters.user(authorized_users))  # Using tuple
 async def text_filter(_, message: Message):
     """Filter text for unauthorized users"""
     text = message.text.lower()
