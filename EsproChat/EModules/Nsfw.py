@@ -7,7 +7,6 @@ import re
 import asyncio
 import os
 import tempfile
-import random
 import logging
 from typing import List, Tuple, Optional
 
@@ -21,19 +20,13 @@ logger = logging.getLogger(__name__)
 # API Configurations
 SIGHTENGINE_USER = "1916313622"
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
-NEKOS_API = "https://nekos.best/api/v2/neko"
 
-# Database to store authorized users - using tuples for Pyrogram compatibility
-authorized_users: Tuple[int, ...] = ()
-exempt_users: Tuple[int, ...] = ()
+# Database to store authorized users
+authorized_users: Tuple[int, ...] = (int(OWNER_ID),) if OWNER_ID else ()
+exempt_users: Tuple[int, ...] = (int(OWNER_ID),) if OWNER_ID else ()
 
-# Initialize with owner from config
-if isinstance(OWNER_ID, (list, tuple)):
-    authorized_users = tuple(map(int, OWNER_ID))
-    exempt_users = tuple(map(int, OWNER_ID))
-elif OWNER_ID:
-    authorized_users = (int(OWNER_ID),)
-    exempt_users = (int(OWNER_ID),)
+# Create downloads directory if it doesn't exist
+os.makedirs('downloads', exist_ok=True)
 
 # Enhanced NSFW keywords
 NSFW_KEYWORDS = [
@@ -77,16 +70,6 @@ async def check_nsfw(file_path: str) -> bool:
         logger.error(f"NSFW Check Error: {e}")
         return False
 
-async def get_random_neko() -> Optional[str]:
-    """Get random neko image from API"""
-    try:
-        response = await asyncio.to_thread(requests.get, NEKOS_API, timeout=5)
-        data = response.json()
-        return data['results'][0]['url']
-    except Exception as e:
-        logger.error(f"Neko API Error: {e}")
-        return None
-
 async def take_action(message: Message, content_type: str):
     """Delete content and send warning"""
     try:
@@ -95,24 +78,19 @@ async def take_action(message: Message, content_type: str):
         user_info = (
             f"👤 User: {user.first_name}\n"
             f"🆔 ID: {user.id}\n"
-            f"✉️ Username: @{user.username}\n"
+            f"✉️ Username: @{user.username if user.username else 'N/A'}\n"
             f"📛 Content: {content_type}"
         )
         
         # Delete the message
         await message.delete()
         
-        # Get random neko image
-        neko_url = await get_random_neko()
+        # Send warning with user info
+        warning_msg = await message.reply(f"⚠️ NSFW Content Removed!\n\n{user_info}")
         
-        # Send warning with user info and neko image
-        if neko_url:
-            await message.reply_photo(
-                photo=neko_url,
-                caption=f"⚠️ NSFW Content Removed!\n\n{user_info}"
-            )
-        else:
-            await message.reply(f"⚠️ NSFW Content Removed!\n\n{user_info}")
+        # Delete warning after 10 seconds
+        await asyncio.sleep(10)
+        await warning_msg.delete()
             
     except Exception as e:
         logger.error(f"Action Error: {e}")
@@ -122,20 +100,21 @@ async def process_media(message: Message):
     file_path = None
     try:
         # Download file to temp directory
-        file_path = await message.download(file_name=tempfile.mktemp())
+        file_path = await message.download(file_name='downloads/')
         
-        if await check_nsfw(file_path):
-            content_type = "Media"
-            if message.sticker:
-                content_type = "Animated Sticker" if message.sticker.is_animated else "Static Sticker"
-            elif message.animation:
-                content_type = "GIF"
-            elif message.video:
-                content_type = "Video"
-            elif message.photo:
-                content_type = "Photo"
-                
-            await take_action(message, content_type)
+        if file_path and os.path.exists(file_path):
+            if await check_nsfw(file_path):
+                content_type = "Media"
+                if message.sticker:
+                    content_type = "Animated Sticker" if message.sticker.is_animated else "Static Sticker"
+                elif message.animation:
+                    content_type = "GIF"
+                elif message.video:
+                    content_type = "Video"
+                elif message.photo:
+                    content_type = "Photo"
+                    
+                await take_action(message, content_type)
             
     except Exception as e:
         logger.error(f"Media Processing Error: {e}")
@@ -156,7 +135,7 @@ def update_authorized_users(new_user: int, action: str):
         current.remove(new_user)
     authorized_users = tuple(current)
 
-@app.on_message(filters.command(["addauth"]) & filters.user(exempt_users))
+@app.on_message(filters.command("addauth") & filters.user(exempt_users))
 async def add_auth(client, message: Message):
     """Add user to authorized list"""
     try:
@@ -168,7 +147,7 @@ async def add_auth(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
 
-@app.on_message(filters.command(["remauth"]) & filters.user(exempt_users))
+@app.on_message(filters.command("remauth") & filters.user(exempt_users))
 async def remove_auth(client, message: Message):
     """Remove user from authorized list"""
     try:
@@ -180,7 +159,7 @@ async def remove_auth(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
 
-@app.on_message(filters.command(["listauth"]) & filters.user(exempt_users))
+@app.on_message(filters.command("listauth") & filters.user(exempt_users))
 async def list_auth(client, message: Message):
     """List all authorized users"""
     if not authorized_users:
@@ -207,7 +186,7 @@ async def text_filter(client, message: Message):
 
 # Plugin information
 __PLUGIN__ = "nsfw_protection"
-__DESCRIPTION__ = "Advanced NSFW content filtering with neko warnings"
+__DESCRIPTION__ = "Advanced NSFW content filtering system"
 __COMMANDS__ = {
     "addauth <user_id>": "Add user to authorized list",
     "remauth <user_id>": "Remove user from authorized list",
