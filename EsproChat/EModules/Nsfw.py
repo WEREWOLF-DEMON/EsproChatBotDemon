@@ -8,7 +8,7 @@ import asyncio
 import os
 import tempfile
 import logging
-from typing import List, Tuple, Optional, Union
+from typing import Tuple, List
 
 # Setup logging
 logging.basicConfig(
@@ -21,36 +21,31 @@ logger = logging.getLogger(__name__)
 SIGHTENGINE_USER = "1916313622"
 SIGHTENGINE_SECRET = "frPDtcGYH42kUkmsKuGoj9SVYHCMW9QA"
 
-# Initialize authorized users properly handling both single ID and list of IDs
-def initialize_users(owner_id: Union[int, List[int], default: Tuple[int, ...] = ()) -> Tuple[int, ...]:
+# Initialize authorized users from OWNER_ID
+def get_owner_ids(owner_id):
     if isinstance(owner_id, list):
         return tuple(int(i) for i in owner_id)
     elif owner_id:
         return (int(owner_id),)
-    return default
+    return ()
 
-authorized_users: Tuple[int, ...] = initialize_users(OWNER_ID)
-exempt_users: Tuple[int, ...] = initialize_users(OWNER_ID)
+authorized_users: Tuple[int, ...] = get_owner_ids(OWNER_ID)
+exempt_users: Tuple[int, ...] = get_owner_ids(OWNER_ID)
 
-# Create downloads directory if it doesn't exist
+# Create downloads directory
 os.makedirs('downloads', exist_ok=True)
 
-# Enhanced NSFW keywords
+# NSFW keywords
 NSFW_KEYWORDS = [
-    # Sexual content
-    "porn", "xxx", "adult", "nsfw", "sex", "fuck", "dick", "pussy", "boobs", "nude", "naked",
-    # Profanity
+    "porn", "xxx", "adult", "nsfw", "sex", "fuck", "dick", "pussy", "boobs", "nude",
     "shit", "asshole", "bitch", "bastard", "cunt", "whore", "slut",
-    # Drugs
-    "drugs?", "heroin", "cocaine", "weed", "marijuana", "hash", "lsd", "ecstasy", "meth",
-    # Violence
+    "drugs", "heroin", "cocaine", "weed", "marijuana", "hash", "lsd", "ecstasy", "meth",
     "kill", "murder", "rape", "terrorist", "bomb", "shoot", "gun", "attack",
-    # Self-harm
     "suicide", "selfharm", "cutting", "hang", "die"
 ]
 
 async def check_nsfw(file_path: str) -> bool:
-    """Check content using Sightengine API"""
+    """Check media for NSFW content"""
     try:
         with open(file_path, 'rb') as f:
             response = await asyncio.to_thread(
@@ -65,7 +60,6 @@ async def check_nsfw(file_path: str) -> bool:
                 timeout=10
             )
         result = response.json()
-        
         return (
             result.get('nudity', {}).get('sexual_activity', 0) > 0.7 or
             result.get('nudity', {}).get('sexual_display', 0) > 0.7 or
@@ -78,37 +72,27 @@ async def check_nsfw(file_path: str) -> bool:
         return False
 
 async def take_action(message: Message, content_type: str):
-    """Delete content and send warning"""
+    """Delete NSFW content and warn user"""
     try:
-        # Get user info
         user = message.from_user
-        user_info = (
+        await message.delete()
+        warning = await message.reply(
+            f"⚠️ NSFW Content Removed!\n\n"
             f"👤 User: {user.first_name or 'Unknown'}\n"
             f"🆔 ID: {user.id}\n"
             f"✉️ Username: @{user.username or 'N/A'}\n"
             f"📛 Content: {content_type}"
         )
-        
-        # Delete the message
-        await message.delete()
-        
-        # Send warning with user info
-        warning_msg = await message.reply(f"⚠️ NSFW Content Removed!\n\n{user_info}")
-        
-        # Delete warning after 10 seconds
         await asyncio.sleep(10)
-        await warning_msg.delete()
-            
+        await warning.delete()
     except Exception as e:
         logger.error(f"Action Error: {e}")
 
 async def process_media(message: Message):
-    """Handle media content checking"""
+    """Process and check media files"""
     file_path = None
     try:
-        # Download file to temp directory
         file_path = await message.download(file_name='downloads/')
-        
         if file_path and os.path.exists(file_path):
             if await check_nsfw(file_path):
                 content_type = "Media"
@@ -120,11 +104,9 @@ async def process_media(message: Message):
                     content_type = "Video"
                 elif message.photo:
                     content_type = "Photo"
-                    
                 await take_action(message, content_type)
-            
     except Exception as e:
-        logger.error(f"Media Processing Error: {e}")
+        logger.error(f"Media Process Error: {e}")
     finally:
         if file_path and os.path.exists(file_path):
             try:
@@ -132,70 +114,69 @@ async def process_media(message: Message):
             except:
                 pass
 
-def update_authorized_users(new_user: int, action: str):
-    """Helper function to update authorized users"""
+def update_auth_users(user_id: int, action: str):
+    """Update authorized users list"""
     global authorized_users
     current = list(authorized_users)
-    if action == "add" and new_user not in current:
-        current.append(new_user)
-    elif action == "remove" and new_user in current:
-        current.remove(new_user)
+    if action == "add" and user_id not in current:
+        current.append(user_id)
+    elif action == "remove" and user_id in current:
+        current.remove(user_id)
     authorized_users = tuple(current)
 
 @app.on_message(filters.command("addauth") & filters.user(exempt_users))
-async def add_auth(client, message: Message):
+async def add_auth(_, message: Message):
     """Add user to authorized list"""
     try:
         user_id = int(message.command[1])
-        update_authorized_users(user_id, "add")
+        update_auth_users(user_id, "add")
         await message.reply(f"✅ Added {user_id} to authorized list!")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /addauth <user_id>")
     except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
+        await message.reply(f"❌ Error: {e}")
 
 @app.on_message(filters.command("remauth") & filters.user(exempt_users))
-async def remove_auth(client, message: Message):
+async def rem_auth(_, message: Message):
     """Remove user from authorized list"""
     try:
         user_id = int(message.command[1])
-        update_authorized_users(user_id, "remove")
+        update_auth_users(user_id, "remove")
         await message.reply(f"✅ Removed {user_id} from authorized list!")
     except (IndexError, ValueError):
         await message.reply("❌ Usage: /remauth <user_id>")
     except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
+        await message.reply(f"❌ Error: {e}")
 
 @app.on_message(filters.command("listauth") & filters.user(exempt_users))
-async def list_auth(client, message: Message):
-    """List all authorized users"""
+async def list_auth(_, message: Message):
+    """List authorized users"""
     if not authorized_users:
         await message.reply("ℹ️ No authorized users!")
     else:
-        users_list = "\n".join(f"• <code>{uid}</code>" for uid in authorized_users)
-        await message.reply(f"🛡️ Authorized Users:\n{users_list}", parse_mode="HTML")
+        users = "\n".join(f"• <code>{uid}</code>" for uid in authorized_users)
+        await message.reply(f"🛡️ Authorized Users:\n{users}", parse_mode="HTML")
 
 @app.on_message(
     (filters.photo | filters.video | filters.document | 
      filters.sticker | filters.animation) & 
     ~filters.user(authorized_users)
 )
-async def media_filter(client, message: Message):
-    """Filter all media content"""
+async def filter_media(_, message: Message):
+    """Filter NSFW media"""
     await process_media(message)
 
 @app.on_message(filters.text & ~filters.user(authorized_users))
-async def text_filter(client, message: Message):
-    """Filter text messages for NSFW content"""
+async def filter_text(_, message: Message):
+    """Filter NSFW text"""
     text = message.text.lower()
     if any(re.search(rf'\b{kw}\b', text) for kw in NSFW_KEYWORDS):
         await take_action(message, "Text Message")
 
-# Plugin information
-__PLUGIN__ = "nsfw_protection"
+__PLUGIN__ = "nsfw_protector"
 __DESCRIPTION__ = "Advanced NSFW content filtering system"
 __COMMANDS__ = {
-    "addauth <user_id>": "Add user to authorized list",
-    "remauth <user_id>": "Remove user from authorized list",
+    "addauth <user_id>": "Authorize user to bypass filters",
+    "remauth <user_id>": "Remove user authorization",
     "listauth": "List authorized users"
 }
