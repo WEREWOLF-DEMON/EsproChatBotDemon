@@ -20,7 +20,7 @@ OWNER_ID = list(
 
 #Fill Only Username Without @
 SUPPORT_GROUP = getenv(
-    "SUPPORT_GROUP", "EsproSupport"
+    "SUPPORT_GROUP", "https://t.me/WerewolfDemonUpdate"
 )  
 
 MONGO_URL = os.environ.get("MONGO_URL")
