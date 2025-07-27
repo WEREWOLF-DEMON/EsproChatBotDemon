@@ -8,15 +8,25 @@ from pyrogram import filters, enums
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from config import OWNER_ID, SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET, AUTH_USERS
 
-# ✅ Config
-nekos_api = "https://nekos.best/api/v2/neko"
-authorized_users = set(AUTH_USERS) | {OWNER_ID}
+# ✅ Convert OWNER_ID safely
+if isinstance(OWNER_ID, list):
+    owner_ids = [int(x) for x in OWNER_ID]
+else:
+    owner_ids = [int(OWNER_ID)]
+
+authorized_users = set(AUTH_USERS)
+authorized_users.update(owner_ids)
+
+# ✅ NSFW State
 nsfw_enabled = defaultdict(lambda: True)
 user_spam_tracker = defaultdict(int)
 user_messages = defaultdict(list)
 last_alert_time = defaultdict(float)
 
+# ✅ HTTP Session
 session = aiohttp.ClientSession()
+
+nekos_api = "https://nekos.best/api/v2/neko"
 
 # ✅ Fetch random neko image
 async def get_neko_image():
@@ -148,7 +158,7 @@ async def toggle_nsfw(client, message: Message):
         await message.reply("❌ Invalid command. Use `/nsfw on` or `/nsfw off`.")
 
 # ✅ Authorize User (OWNER only)
-@app.on_message(filters.command("authorize") & filters.user(OWNER_ID))
+@app.on_message(filters.command("authorize") & filters.user(owner_ids))
 async def authorize_user(client, message: Message):
     user_id = None
     if message.reply_to_message and message.reply_to_message.from_user:
@@ -164,7 +174,7 @@ async def authorize_user(client, message: Message):
     authorized_users.add(user_id)
     await message.reply(f"✅ User `{user_id}` is now authorized.")
 
-@app.on_message(filters.command("unauthorize") & filters.user(OWNER_ID))
+@app.on_message(filters.command("unauthorize") & filters.user(owner_ids))
 async def unauthorize_user(client, message: Message):
     user_id = None
     if message.reply_to_message and message.reply_to_message.from_user:
