@@ -2,6 +2,7 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from EsproChat import app
 from config import LOGGER_ID as LOG_GROUP_ID
+
 from EsproChat.Db import get_served_chats, remove_served_chat, add_served_chat
 
 import requests
@@ -28,13 +29,11 @@ async def on_new_chat_members(client: Client, message: Message):
             f"┣★ **ᴄʜᴀᴛ ɪᴅ** › : {chat_id}\n"
             f"┣★ **ᴄʜᴀᴛ ᴜɴᴀᴍᴇ** › : @{message.chat.username}\n"
             f"┣★ **ɢʀᴏᴜᴘ ʟɪɴᴋ** › : [ᴛᴏᴜᴄʜ]({chatusername}) \n"
-          #  f"┣★ **ɢʀᴏᴜᴘ ᴍᴇᴍʙᴇʀs** › : {count}\n"
             f"┣★ **ᴛᴏᴛᴀʟ ᴄʜᴀᴛ** › : {served_chats}\n"
             f"┣★ **ᴀᴅᴅᴇᴅ ʙʏ** › : {added_by} \n"
             f"┗━━━━━━━━━★ "
         )
-        await app.send_photo(LOGGER_ID, photo=image_url, caption=msg)
-  
+        await app.send_photo(LOG_GROUP_ID, photo=image_url, caption=msg)
         await add_served_chat(chat_id)
 
 @app.on_message(filters.left_chat_member)
@@ -52,6 +51,5 @@ async def on_left_chat_member(_, message: Message):
             f"๏ ɢʀᴏᴜᴘ ɪᴅ ➠ {chat_id}\n"
             f"๏ ʙᴏᴛ ʀᴇᴍᴏᴠᴇᴅ ʙʏ ➠ {remove_by}\n"
         )
-        await app.send_photo(LOGGER_ID, photo=image_url, caption=left)
+        await app.send_photo(LOG_GROUP_ID, photo=image_url, caption=left)
         await remove_served_chat(chat_id)
-        
