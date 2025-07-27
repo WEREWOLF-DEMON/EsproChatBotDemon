@@ -1,13 +1,16 @@
 import os
 from PIL import ImageDraw, Image, ImageFont, ImageChops
 from pyrogram import Client, filters, enums
-from pyrogram.types import *
-from pyrogram.handlers import MessageHandler, ChatMemberUpdatedHandler
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ChatMemberUpdated
 from logging import getLogger
 from EsproChat import app
+from config import LOGGER_ID  # ✅ FIX: Import from config
+from EsproChat.Db import get_served_chats, add_served_chat, remove_served_chat
+import requests
 
 LOGGER = getLogger(__name__)
 
+# ✅ In-memory DB for welcome system
 class WelDatabase:
     def __init__(self):
         self.data = {}
@@ -24,15 +27,11 @@ class WelDatabase:
 
 wlcm = WelDatabase()
 
+# ✅ Temp Storage
 class temp:
-    ME = None
-    CURRENT = 2
-    CANCEL = False
     MELCOW = {}
-    U_NAME = None
-    B_NAME = None
 
-# ✅ Compatible circle crop function
+# ✅ Circle Crop Function
 def circle(pfp, size=(500, 500)):
     try:
         resample_filter = Image.Resampling.LANCZOS
@@ -49,7 +48,7 @@ def circle(pfp, size=(500, 500)):
     pfp.putalpha(mask)
     return pfp
 
-# ✅ Welcome image generator
+# ✅ Welcome Image Generator
 def welcomepic(pic, user, chatname, id, uname):
     background = Image.open("EsproChat/assets/wel2.png")
     pfp = Image.open(pic).convert("RGBA")
@@ -66,7 +65,7 @@ def welcomepic(pic, user, chatname, id, uname):
     background.save(f"downloads/welcome#{id}.png")
     return f"downloads/welcome#{id}.png"
 
-# ✅ /wel command to toggle welcome system
+# ✅ Command to Enable/Disable Welcome
 @app.on_message(filters.command("wel") & ~filters.private)
 async def auto_state(_, message):
     usage = "**Usage:**\n⦿ /wel [on|off]\n⦿ Only admins can enable/disable welcome image."
@@ -96,7 +95,7 @@ async def auto_state(_, message):
     else:
         await message.reply_text("❌ Only group admins can use this command.")
 
-# ✅ Welcome message handler
+# ✅ Handle New Member for Welcome
 @app.on_chat_member_updated(filters.group, group=-3)
 async def greet_group(_, member: ChatMemberUpdated):
     chat_id = member.chat.id
@@ -147,16 +146,41 @@ async def greet_group(_, member: ChatMemberUpdated):
     except Exception:
         pass
 
-# ✅ Bot joins new group logging (optional LOG_CHANNEL_ID)
+# ✅ Bot Joins Group Logging
 @app.on_message(filters.new_chat_members & filters.group, group=-1)
 async def bot_wel(_, message):
     for u in message.new_chat_members:
         if u.id == app.me.id:
-            await app.send_message(
-                LOG_CHANNEL_ID,
-                f"""**🔔 New Group Joined**
-
+            served_chats = len(await get_served_chats())
+            await add_served_chat(message.chat.id)
+            response = requests.get("https://nekos.best/api/v2/neko").json()
+            image_url = response["results"][0]["url"]
+            await app.send_photo(
+                LOGGER_ID,
+                photo=image_url,
+                caption=f"""
+**🔔 New Group Joined**
 **Group Name:** {message.chat.title}
 **Group ID:** `{message.chat.id}`
-**Username:** @{message.chat.username or "N/A"}"""
-    )
+**Username:** @{message.chat.username or "N/A"}
+**Total Groups:** {served_chats}
+"""
+            )
+
+# ✅ Bot Removed From Group Logging
+@app.on_message(filters.left_chat_member)
+async def bot_left(_, message: Message):
+    if message.left_chat_member.id == app.me.id:
+        await remove_served_chat(message.chat.id)
+        response = requests.get("https://nekos.best/api/v2/neko").json()
+        image_url = response["results"][0]["url"]
+        await app.send_photo(
+            LOGGER_ID,
+            photo=image_url,
+            caption=f"""
+❌ Bot Removed From Group
+**Group Name:** {message.chat.title}
+**Group ID:** `{message.chat.id}`
+Removed By: {message.from_user.mention if message.from_user else "Unknown"}
+"""
+        )
