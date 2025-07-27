@@ -163,22 +163,57 @@ async def toggle_nsfw(client, message: Message):
     nsfw_enabled[message.chat.id] = (state == "on")
     await message.reply(f"✅ NSFW filter is now **{'enabled' if state == 'on' else 'disabled'}**.")
 
-# ✅ Owner Authorization
+# ✅ Owner Authorization (Reply OR ID OR Username)
 @app.on_message(filters.command("authorize") & filters.user(OWNER_ID))
 async def authorize_user(client, message: Message):
-    if not message.reply_to_message or not message.reply_to_message.from_user:
-        return await message.reply("Reply to a user's message to authorize them.")
-    user_id = message.reply_to_message.from_user.id
-    authorized_users.add(user_id)
-    await message.reply(f"✅ User `{user_id}` has been authorized.")
+    target_id = None
 
+    # ✅ If reply
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_id = message.reply_to_message.from_user.id
+    # ✅ Else, check argument
+    elif len(message.command) > 1:
+        arg = message.command[1]
+        if arg.isdigit():
+            target_id = int(arg)
+        else:
+            try:
+                user_obj = await client.get_users(arg)
+                target_id = user_obj.id
+            except:
+                return await message.reply("❌ Invalid username or user not found.\nExample:\n`/authorize @username`\n`/authorize 123456789`")
+
+    if not target_id:
+        return await message.reply("Reply to a user or provide username/ID.\nExample:\n`/authorize @username`\n`/authorize 123456789`")
+
+    authorized_users.add(target_id)
+    await message.reply(f"✅ User `{target_id}` has been authorized.")
+
+# ✅ Owner Unauthorization (Reply OR ID OR Username)
 @app.on_message(filters.command("unauthorize") & filters.user(OWNER_ID))
 async def unauthorize_user(client, message: Message):
-    if not message.reply_to_message or not message.reply_to_message.from_user:
-        return await message.reply("Reply to a user's message to remove authorization.")
-    user_id = message.reply_to_message.from_user.id
-    if user_id in authorized_users:
-        authorized_users.remove(user_id)
-        await message.reply(f"❌ User `{user_id}` authorization removed.")
+    target_id = None
+
+    # ✅ If reply
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_id = message.reply_to_message.from_user.id
+    # ✅ Else, check argument
+    elif len(message.command) > 1:
+        arg = message.command[1]
+        if arg.isdigit():
+            target_id = int(arg)
+        else:
+            try:
+                user_obj = await client.get_users(arg)
+                target_id = user_obj.id
+            except:
+                return await message.reply("❌ Invalid username or user not found.\nExample:\n`/unauthorize @username`\n`/unauthorize 123456789`")
+
+    if not target_id:
+        return await message.reply("Reply to a user or provide username/ID.\nExample:\n`/unauthorize @username`\n`/unauthorize 123456789`")
+
+    if target_id in authorized_users:
+        authorized_users.remove(target_id)
+        await message.reply(f"❌ User `{target_id}` authorization removed.")
     else:
         await message.reply("User is not authorized.")
