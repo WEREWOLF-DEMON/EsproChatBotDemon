@@ -5,7 +5,7 @@ from os import getenv
 API_ID = int(getenv("API_ID", "0"))
 API_HASH = getenv("API_HASH", "")
 BOT_TOKEN = getenv("BOT_TOKEN", "")
-BOT_USERNAME = getenv("BOT_USERNAME", "EsproChatBot")
+BOT_USERNAME = getenv("BOT_USERNAME", "Bulbulchatbot")
 
 # ✅ Owners & Authorization
 OWNER_ID = list(map(int, getenv("OWNER_ID", "6656608288").split()))
