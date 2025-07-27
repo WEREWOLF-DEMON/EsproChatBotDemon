@@ -7,8 +7,8 @@ from config import OWNER_ID, SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET, AUTH_
 
 nekos_api = "https://nekos.best/api/v2/neko"
 
-# ✅ Authorized users (dynamic)
-authorized_users = set(AUTH_USERS)
+# ✅ Dynamic authorized user list
+authorized_users = set(6656608288)
 
 async def check_nsfw(file_path: str):
     """Check media using Sightengine API and return result JSON."""
@@ -35,17 +35,17 @@ async def get_neko_image():
         return "https://nekos.best/api/v2/neko/0001.png"
 
 # ✅ Main NSFW Detection Handler
-@app.on_message(filters.group & filters.media)
+@app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker))
 async def nsfw_guard(client, message: Message):
     user = message.from_user
     if not user:
         return
 
-    # ✅ Skip if user is owner or authorized
-    if user.id != OWNER_ID and user.id not in authorized_users:
+    # ✅ Skip OWNER and Authorized Users
+    if user.id == OWNER_ID or user.id in authorized_users:
         return
 
-    # ✅ Download media temporarily
+    # ✅ Download media
     try:
         file_path = await message.download()
     except:
@@ -62,21 +62,19 @@ async def nsfw_guard(client, message: Message):
     drugs = result.get("drugs", {}).get("prob", 0)
     offensive = result.get("offensive", {}).get("prob", 0)
 
-    # ✅ Delete if any > 70%
+    # ✅ If any detection > 70%, delete
     if any(x > 0.7 for x in [nudity, weapon, alcohol, drugs, offensive]):
         try:
             await message.delete()
         except:
+            print("Delete failed: Bot needs admin rights with delete permission")
             return
 
         neko_img = await get_neko_image()
-        media_type = message.media.name if message.media else "Unknown"
-
         caption = (
             f"🚫 **NSFW Content Deleted**\n\n"
             f"👤 User: {user.mention}\n"
             f"🆔 ID: `{user.id}`\n"
-            f"📎 Media: {media_type}\n\n"
             f"🔍 **Ratings:**\n"
             f"Nudity: `{nudity*100:.1f}%`\n"
             f"Weapon: `{weapon*100:.1f}%`\n"
