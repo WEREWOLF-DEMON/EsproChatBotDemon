@@ -35,7 +35,7 @@ async def check_nsfw(file_path: str):
                 form.add_field("models", "nudity,wad,offensive")
                 form.add_field("api_user", SIGHTENGINE_API_USER)
                 form.add_field("api_secret", SIGHTENGINE_API_SECRET)
-                async with session.post(url, data=form, timeout=30) as resp:
+                async with session.post(url, data=form, timeout=25) as resp:
                     return await resp.json()
     except Exception as e:
         print(f"[ERROR] Sightengine API: {e}")
@@ -51,7 +51,7 @@ async def delete_user_messages(client, chat_id, user_id):
                 pass
         user_messages[(chat_id, user_id)].clear()
 
-# ✅ Main NSFW Detector
+# ✅ Main NSFW Detector (Photo, Video, GIF, Stickers, Video Stickers)
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
@@ -76,7 +76,11 @@ async def nsfw_guard(client, message: Message):
     if user.id == OWNER_ID or user.id in authorized_users:
         return
 
-    # ✅ Download media
+    # ✅ Skip safe stickers (emojis, small tgs)
+    if message.sticker and not message.sticker.is_video and not message.sticker.is_animated:
+        return  # Normal static stickers are usually safe
+
+    # ✅ Download media (photo, video, gif, video sticker)
     try:
         file_path = await message.download()
     except:
@@ -116,12 +120,19 @@ async def nsfw_guard(client, message: Message):
         # ✅ Increase spam counter
         user_spam_tracker[user.id] += 1
 
-        # ✅ Delete all messages from this user
+        # ✅ Delete all messages from this user (FAST)
         await delete_user_messages(client, chat_id, user.id)
 
         # ✅ Stylish NSFW alert
         neko_img = await get_neko_image()
-        media_type = "Photo" if message.photo else "Video" if message.video else "GIF" if message.animation else "Sticker"
+        media_type = (
+            "Photo" if message.photo else
+            "Video Sticker" if message.sticker and message.sticker.is_video else
+            "GIF Sticker" if message.sticker and message.sticker.is_animated else
+            "GIF" if message.animation else
+            "Video" if message.video else
+            "Sticker"
+        )
 
         caption = (
             f"🚫 **NSFW Content Removed**\n\n"
@@ -148,72 +159,3 @@ async def nsfw_guard(client, message: Message):
             )
         except:
             await message.reply(caption)
-
-# ✅ Command to Enable/Disable NSFW Filter
-@app.on_message(filters.command("nsfw") & filters.group)
-async def toggle_nsfw(client, message: Message):
-    user = await client.get_chat_member(message.chat.id, message.from_user.id)
-    if user.status not in (enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER):
-        return await message.reply("❌ Only admins can toggle NSFW filter.")
-
-    if len(message.command) < 2:
-        return await message.reply("Usage: `/nsfw on` or `/nsfw off`")
-
-    state = message.command[1].lower()
-    nsfw_enabled[message.chat.id] = (state == "on")
-    await message.reply(f"✅ NSFW filter is now **{'enabled' if state == 'on' else 'disabled'}**.")
-
-# ✅ Owner Authorization (Reply OR ID OR Username)
-@app.on_message(filters.command("authorize") & filters.user(OWNER_ID))
-async def authorize_user(client, message: Message):
-    target_id = None
-
-    # ✅ If reply
-    if message.reply_to_message and message.reply_to_message.from_user:
-        target_id = message.reply_to_message.from_user.id
-    # ✅ Else, check argument
-    elif len(message.command) > 1:
-        arg = message.command[1]
-        if arg.isdigit():
-            target_id = int(arg)
-        else:
-            try:
-                user_obj = await client.get_users(arg)
-                target_id = user_obj.id
-            except:
-                return await message.reply("❌ Invalid username or user not found.\nExample:\n`/authorize @username`\n`/authorize 123456789`")
-
-    if not target_id:
-        return await message.reply("Reply to a user or provide username/ID.\nExample:\n`/authorize @username`\n`/authorize 123456789`")
-
-    authorized_users.add(target_id)
-    await message.reply(f"✅ User `{target_id}` has been authorized.")
-
-# ✅ Owner Unauthorization (Reply OR ID OR Username)
-@app.on_message(filters.command("unauthorize") & filters.user(OWNER_ID))
-async def unauthorize_user(client, message: Message):
-    target_id = None
-
-    # ✅ If reply
-    if message.reply_to_message and message.reply_to_message.from_user:
-        target_id = message.reply_to_message.from_user.id
-    # ✅ Else, check argument
-    elif len(message.command) > 1:
-        arg = message.command[1]
-        if arg.isdigit():
-            target_id = int(arg)
-        else:
-            try:
-                user_obj = await client.get_users(arg)
-                target_id = user_obj.id
-            except:
-                return await message.reply("❌ Invalid username or user not found.\nExample:\n`/unauthorize @username`\n`/unauthorize 123456789`")
-
-    if not target_id:
-        return await message.reply("Reply to a user or provide username/ID.\nExample:\n`/unauthorize @username`\n`/unauthorize 123456789`")
-
-    if target_id in authorized_users:
-        authorized_users.remove(target_id)
-        await message.reply(f"❌ User `{target_id}` authorization removed.")
-    else:
-        await message.reply("User is not authorized.")
