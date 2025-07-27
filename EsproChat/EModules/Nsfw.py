@@ -6,9 +6,8 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from config import OWNER_ID, SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET, AUTH_USERS
 
 nekos_api = "https://nekos.best/api/v2/neko"
-
-# ✅ Dynamic authorized user list
 authorized_users = set(AUTH_USERS)
+
 
 async def check_nsfw(file_path: str):
     """Check media using Sightengine API and return result JSON."""
@@ -24,6 +23,7 @@ async def check_nsfw(file_path: str):
         print("Sightengine API error:", e)
         return None
 
+
 async def get_neko_image():
     """Fetch neko image for stylish response."""
     try:
@@ -34,7 +34,7 @@ async def get_neko_image():
     except:
         return "https://nekos.best/api/v2/neko/0001.png"
 
-# ✅ Main NSFW Detection Handler
+
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker))
 async def nsfw_guard(client, message: Message):
     user = message.from_user
@@ -56,13 +56,14 @@ async def nsfw_guard(client, message: Message):
     if not result:
         return
 
-    nudity = result.get("nudity", {}).get("raw", 0)
-    weapon = result.get("weapon", {}).get("prob", 0)
-    alcohol = result.get("alcohol", {}).get("prob", 0)
-    drugs = result.get("drugs", {}).get("prob", 0)
-    offensive = result.get("offensive", {}).get("prob", 0)
+    # ✅ Safely extract values
+    nudity = float(result.get("nudity", {}).get("raw", 0)) if isinstance(result.get("nudity"), dict) else 0
+    weapon = float(result.get("weapon", 0))  # float in API
+    alcohol = float(result.get("alcohol", 0))
+    drugs = float(result.get("drugs", 0))
+    offensive = float(result.get("offensive", {}).get("prob", 0)) if isinstance(result.get("offensive"), dict) else 0
 
-    # ✅ If any detection > 70%, delete
+    # ✅ Delete if any > 70%
     if any(x > 0.7 for x in [nudity, weapon, alcohol, drugs, offensive]):
         try:
             await message.delete()
@@ -100,6 +101,7 @@ async def nsfw_guard(client, message: Message):
     except:
         pass
 
+
 # ✅ Owner Command to Authorize User
 @app.on_message(filters.command("authorize") & filters.user(OWNER_ID))
 async def authorize_user(client, message: Message):
@@ -108,6 +110,7 @@ async def authorize_user(client, message: Message):
     user_id = message.reply_to_message.from_user.id
     authorized_users.add(user_id)
     await message.reply(f"✅ User `{user_id}` has been authorized.")
+
 
 # ✅ Owner Command to Unauthorize User
 @app.on_message(filters.command("unauthorize") & filters.user(OWNER_ID))
