@@ -8,7 +8,7 @@ from config import OWNER_ID, SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET, AUTH_
 nekos_api = "https://nekos.best/api/v2/neko"
 
 # ✅ Dynamic authorized user list
-authorized_users = set(6656608288)
+authorized_users = set(AUTH_USERS)
 
 async def check_nsfw(file_path: str):
     """Check media using Sightengine API and return result JSON."""
