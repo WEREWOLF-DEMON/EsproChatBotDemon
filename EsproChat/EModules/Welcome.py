@@ -1,12 +1,10 @@
 import os
 from PIL import ImageDraw, Image, ImageFont, ImageChops
 from pyrogram import Client, filters, enums
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ChatMemberUpdated
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ChatMemberUpdated
 from logging import getLogger
 from EsproChat import app
-from config import LOGGER_ID  # ✅ FIX: Import from config
-from EsproChat.Db import get_served_chats, add_served_chat, remove_served_chat
-import requests
+from config import BOT_USERNAME
 
 LOGGER = getLogger(__name__)
 
@@ -57,7 +55,6 @@ def welcomepic(pic, user, chatname, id, uname):
 
     draw = ImageDraw.Draw(background)
     font = ImageFont.truetype('EsproChat/assets/font.ttf', size=110)
-    welcome_font = ImageFont.truetype('EsproChat/assets/font.ttf', size=60)
 
     draw.text((2100, 1420), f'ID: {id}', fill=(0, 0, 0), font=font)
     pfp_position = (1990, 435)
@@ -66,9 +63,9 @@ def welcomepic(pic, user, chatname, id, uname):
     return f"downloads/welcome#{id}.png"
 
 # ✅ Command to Enable/Disable Welcome
-@app.on_message(filters.command("wel") & ~filters.private)
+@app.on_message(filters.command("welcome") & ~filters.private)
 async def auto_state(_, message):
-    usage = "**Usage:**\n⦿ /wel [on|off]\n⦿ Only admins can enable/disable welcome image."
+    usage = "**Usage:**\n⦿ /welcome [on|off]\n⦿ Only admins can enable/disable welcome image."
     if len(message.command) == 1:
         return await message.reply_text(usage)
 
@@ -134,7 +131,7 @@ async def greet_group(_, member: ChatMemberUpdated):
 **ID:** `{user.id}`
 **Username:** @{user.username or "N/A"}""",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("➕ Add Me", url="https://t.me/MissEsproBot?startgroup=true")]
+                [InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")]
             ])
         )
     except Exception as e:
@@ -145,42 +142,3 @@ async def greet_group(_, member: ChatMemberUpdated):
         os.remove(f"downloads/pp{user.id}.png")
     except Exception:
         pass
-
-# ✅ Bot Joins Group Logging
-@app.on_message(filters.new_chat_members & filters.group, group=-1)
-async def bot_wel(_, message):
-    for u in message.new_chat_members:
-        if u.id == app.me.id:
-            served_chats = len(await get_served_chats())
-            await add_served_chat(message.chat.id)
-            response = requests.get("https://nekos.best/api/v2/neko").json()
-            image_url = response["results"][0]["url"]
-            await app.send_photo(
-                LOGGER_ID,
-                photo=image_url,
-                caption=f"""
-**🔔 New Group Joined**
-**Group Name:** {message.chat.title}
-**Group ID:** `{message.chat.id}`
-**Username:** @{message.chat.username or "N/A"}
-**Total Groups:** {served_chats}
-"""
-            )
-
-# ✅ Bot Removed From Group Logging
-@app.on_message(filters.left_chat_member)
-async def bot_left(_, message: Message):
-    if message.left_chat_member.id == app.me.id:
-        await remove_served_chat(message.chat.id)
-        response = requests.get("https://nekos.best/api/v2/neko").json()
-        image_url = response["results"][0]["url"]
-        await app.send_photo(
-            LOGGER_ID,
-            photo=image_url,
-            caption=f"""
-❌ Bot Removed From Group
-**Group Name:** {message.chat.title}
-**Group ID:** `{message.chat.id}`
-Removed By: {message.from_user.mention if message.from_user else "Unknown"}
-"""
-        )
