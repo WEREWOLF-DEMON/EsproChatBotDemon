@@ -13,7 +13,7 @@ AUTH_USERS = list(map(int, getenv("AUTH_USERS", "6656608288").split())) if geten
 
 # ✅ Support & Logger
 SUPPORT_GROUP = getenv("SUPPORT_GROUP", "https://t.me/WerewolfDemonUpdate")
-LOGGER_ID = int(getenv("LOGGER_ID", "-1002861883767"))
+LOGGER_ID = int(getenv("LOGGER_ID", "-1002024511984"))
 
 # ✅ MongoDB
 MONGO_URL = getenv("MONGO_URL", "")
