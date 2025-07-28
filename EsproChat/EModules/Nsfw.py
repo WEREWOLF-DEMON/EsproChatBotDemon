@@ -1,7 +1,6 @@
 import aiohttp
 import asyncio
 import os
-import time
 from collections import defaultdict
 from EsproChat import app
 from pyrogram import filters, enums
@@ -18,11 +17,10 @@ nsfw_enabled = defaultdict(lambda: True)
 user_spam_tracker = defaultdict(int)
 user_messages = defaultdict(list)
 
-# ✅ HTTP session
 session = aiohttp.ClientSession()
 nekos_api = "https://nekos.best/api/v2/neko"
 
-# ✅ Fetch Neko Image
+# ✅ Get Random Neko Image
 async def get_neko_image():
     try:
         async with session.get(nekos_api, timeout=8) as r:
@@ -32,7 +30,7 @@ async def get_neko_image():
     except:
         return "https://nekos.best/api/v2/neko/0001.png"
 
-# ✅ Sightengine API check
+# ✅ Sightengine NSFW Check
 async def check_nsfw(file_path: str):
     url = "https://api.sightengine.com/1.0/check.json"
     try:
@@ -46,30 +44,7 @@ async def check_nsfw(file_path: str):
     except:
         return None
 
-# ✅ Delete all user's tracked messages
-async def delete_user_messages(client, chat_id, user_id):
-    msgs = user_messages.get((chat_id, user_id), [])
-    if msgs:
-        try:
-            await client.delete_messages(chat_id, msgs)
-        except:
-            for m in msgs:
-                try:
-                    await client.delete_messages(chat_id, m)
-                except:
-                    pass
-    user_messages[(chat_id, user_id)].clear()
-
-# ✅ Delete with retry
-async def safe_delete(client, chat_id, message_id, retries=3):
-    for _ in range(retries):
-        try:
-            await client.delete_messages(chat_id, message_id)
-            return
-        except:
-            await asyncio.sleep(0.3)
-
-# ✅ Process NSFW
+# ✅ Process Detection → Delete if NSFW
 async def process_nsfw(client, message, file_path, chat_id, user):
     result = await check_nsfw(file_path)
     if os.path.exists(file_path):
@@ -78,7 +53,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
     if not result:
         return
 
-    # Extract detection scores
+    # ✅ Extract Scores
     nudity = float(result.get("nudity", {}).get("raw", 0))
     partial = float(result.get("nudity", {}).get("partial", 0))
     sexual = float(result.get("nudity", {}).get("sexual_activity", 0))
@@ -86,26 +61,43 @@ async def process_nsfw(client, message, file_path, chat_id, user):
     drugs = float(result.get("drugs", 0))
     offensive = float(result.get("offensive", {}).get("prob", 0))
 
-    combined_score = (nudity + partial + sexual + offensive) / 4
-
-    if combined_score > 0.3 or weapon > 0.7 or drugs > 0.6:
+    # ✅ Decision Logic
+    if (
+        nudity > 0.35
+        or sexual > 0.25
+        or drugs > 0.5
+        or weapon > 0.6
+        or offensive > 0.45
+    ):
+        # Track user strike
         user_spam_tracker[user.id] += 1
+        user_messages[(chat_id, user.id)].append(message.id)
 
-        # Bulk delete on repeated spam
+        # Delete actual message
+        try:
+            await client.delete_messages(chat_id, message.id)
+        except:
+            pass
+
+        # Auto clean after 3 strikes
         if user_spam_tracker[user.id] >= 3:
-            await delete_user_messages(client, chat_id, user.id)
+            for m in user_messages[(chat_id, user.id)]:
+                try:
+                    await client.delete_messages(chat_id, m)
+                except:
+                    pass
+            user_messages[(chat_id, user.id)].clear()
 
-        # Send alert every time
+        # ✅ Send alert EVERY time after delete
         neko_img = await get_neko_image()
         caption = (
-            f"🚫 **NSFW Content Removed**\n\n"
+            f"🚫 **NSFW Content Removed**\n"
             f"👤 {user.mention}\n"
             f"🆔 `{user.id}` | Warnings: `{user_spam_tracker[user.id]}`\n\n"
-            f"**Detection:**\n"
-            f"Nudity: `{nudity*100:.1f}%`\n"
-            f"Partial: `{partial*100:.1f}%`\n"
-            f"Sexual: `{sexual*100:.1f}%`\n"
-            f"Offensive: `{offensive*100:.1f}%`"
+            f"**Detection Scores:**\n"
+            f"Nudity: `{nudity*100:.1f}%` | Partial: `{partial*100:.1f}%`\n"
+            f"Sexual: `{sexual*100:.1f}%` | Drugs: `{drugs*100:.1f}%`\n"
+            f"Weapon: `{weapon*100:.1f}%` | Offensive: `{offensive*100:.1f}%`"
         )
 
         await client.send_photo(
@@ -114,30 +106,23 @@ async def process_nsfw(client, message, file_path, chat_id, user):
             caption=caption,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{client.me.username}?startgroup=true")]]
-            )
+            ),
         )
 
-# ✅ Main detector
+# ✅ Main Handler
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker | filters.document))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
     user = message.from_user
-    if not user or user.id in authorized_users:
+
+    if not user or user.id in authorized_users:  # Skip authorized users
         return
     if message.caption and message.caption.startswith("/"):
         return
     if not nsfw_enabled[chat_id]:
         return
 
-    # Track for bulk delete
-    user_messages[(chat_id, user.id)].append(message.id)
-    if len(user_messages[(chat_id, user.id)]) > 50:
-        user_messages[(chat_id, user.id)].pop(0)
-
-    # Instant delete
-    await safe_delete(client, chat_id, message.id)
-
-    # Download and scan asynchronously
+    # ✅ Download & Analyze
     try:
         file_path = await message.download()
         asyncio.create_task(process_nsfw(client, message, file_path, chat_id, user))
@@ -162,7 +147,7 @@ async def toggle_nsfw(client, message: Message):
     else:
         await message.reply("❌ Invalid command. Use `/nsfw on` or `/nsfw off`.")
 
-# ✅ Authorize / Unauthorize users
+# ✅ Authorize User
 @app.on_message(filters.command("authorize") & filters.user(owner_ids))
 async def authorize_user(client, message: Message):
     user_id = None
@@ -175,10 +160,11 @@ async def authorize_user(client, message: Message):
         except:
             return await message.reply("❌ Invalid user.")
     if not user_id:
-        return await message.reply("Reply or provide username/ID.")
+        return await message.reply("Reply to a user or provide username/ID.")
     authorized_users.add(user_id)
-    await message.reply(f"✅ User `{user_id}` is now authorized.")
+    await message.reply(f"✅ User `{user_id}` authorized successfully!")
 
+# ✅ Unauthorize User
 @app.on_message(filters.command("unauthorize") & filters.user(owner_ids))
 async def unauthorize_user(client, message: Message):
     user_id = None
@@ -191,7 +177,7 @@ async def unauthorize_user(client, message: Message):
         except:
             return await message.reply("❌ Invalid user.")
     if not user_id:
-        return await message.reply("Reply or provide username/ID.")
+        return await message.reply("Reply to a user or provide username/ID.")
     if user_id in authorized_users:
         authorized_users.remove(user_id)
         await message.reply(f"❌ User `{user_id}` authorization removed.")
