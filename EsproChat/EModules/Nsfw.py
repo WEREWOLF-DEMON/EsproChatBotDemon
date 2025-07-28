@@ -1,8 +1,8 @@
 import aiohttp
 import asyncio
 import os
-from PIL import Image
 import subprocess
+from PIL import Image
 from collections import defaultdict
 from EsproChat import app
 from pyrogram import filters, enums
@@ -15,7 +15,7 @@ authorized_users = set(int(x) for x in AUTH_USERS)
 authorized_users.update(owner_ids)
 
 # ✅ State
-nsfw_enabled = defaultdict(lambda: True)
+nsfw_enabled = defaultdict(lambda: True)  # Enabled by default
 user_spam_tracker = defaultdict(int)
 user_messages = defaultdict(list)
 
@@ -46,7 +46,7 @@ async def check_nsfw(file_path: str):
     except:
         return None
 
-# ✅ Convert Sticker or Video Frame to JPG
+# ✅ Convert any media to JPG (handle video stickers & videos)
 def convert_to_jpg(file_path):
     try:
         if file_path.endswith(".webp"):
@@ -56,12 +56,13 @@ def convert_to_jpg(file_path):
             img.save(new_path, "JPEG")
             os.remove(file_path)
             return new_path
-        elif file_path.endswith(".tgs") or file_path.endswith(".webm"):
-            # Animated or Video Sticker → Extract 1st frame
+        elif file_path.endswith((".tgs", ".webm", ".mp4", ".mkv")):
+            # Video or animated sticker
             new_path = file_path + ".jpg"
-            cmd = f'ffmpeg -y -i "{file_path}" -vf "select=eq(n\\,0)" -q:v 3 "{new_path}"'
+            cmd = f'ffmpeg -y -i "{file_path}" -vf "select=eq(n\\,0)" -frames:v 1 -q:v 3 "{new_path}"'
             subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            os.remove(file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
             return new_path if os.path.exists(new_path) else file_path
         return file_path
     except:
@@ -85,13 +86,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
     offensive = float(result.get("offensive", {}).get("prob", 0))
 
     # ✅ Decision Logic
-    if (
-        nudity > 0.35
-        or sexual > 0.25
-        or drugs > 0.5
-        or weapon > 0.6
-        or offensive > 0.45
-    ):
+    if (nudity > 0.35 or sexual > 0.25 or drugs > 0.5 or weapon > 0.6 or offensive > 0.45):
         # Track user strike
         user_spam_tracker[user.id] += 1
         user_messages[(chat_id, user.id)].append(message.id)
@@ -102,7 +97,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
         except:
             pass
 
-        # Delete ALL previous messages if spam
+        # Delete ALL previous spam messages (batch delete)
         if len(user_messages[(chat_id, user.id)]) > 1:
             try:
                 await client.delete_messages(chat_id, user_messages[(chat_id, user.id)])
@@ -138,7 +133,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
             ),
         )
 
-# ✅ Main Handler for All Media
+# ✅ Main Handler
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker | filters.document))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
@@ -153,12 +148,12 @@ async def nsfw_guard(client, message: Message):
 
     try:
         file_path = await message.download()
-        file_path = convert_to_jpg(file_path)  # Handle sticker/video frame conversion
+        file_path = convert_to_jpg(file_path)  # Convert to JPG for detection
         asyncio.create_task(process_nsfw(client, message, file_path, chat_id, user))
     except:
         pass
 
-# ✅ Toggle NSFW Filter
+# ✅ Toggle NSFW Filter (on/off)
 @app.on_message(filters.command("nsfw") & filters.group)
 async def toggle_nsfw(client, message: Message):
     member = await client.get_chat_member(message.chat.id, message.from_user.id)
