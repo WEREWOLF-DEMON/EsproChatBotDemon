@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import os
+from PIL import Image
 from collections import defaultdict
 from EsproChat import app
 from pyrogram import filters, enums
@@ -43,6 +44,17 @@ async def check_nsfw(file_path: str):
             return await resp.json()
     except:
         return None
+
+# ✅ Convert Sticker to JPG for Detection
+def convert_sticker_to_jpg(file_path):
+    try:
+        new_path = file_path.replace(".webp", ".jpg")
+        img = Image.open(file_path).convert("RGB")
+        img.save(new_path, "JPEG")
+        os.remove(file_path)
+        return new_path
+    except:
+        return file_path
 
 # ✅ Process Detection → Delete if NSFW
 async def process_nsfw(client, message, file_path, chat_id, user):
@@ -109,22 +121,24 @@ async def process_nsfw(client, message, file_path, chat_id, user):
             ),
         )
 
-# ✅ Main Handler
+# ✅ Main Handler for All Media (including stickers)
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker | filters.document))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
     user = message.from_user
 
-    if not user or user.id in authorized_users:  # Skip authorized users
+    if not user or user.id in authorized_users:
         return
     if message.caption and message.caption.startswith("/"):
         return
     if not nsfw_enabled[chat_id]:
         return
 
-    # ✅ Download & Analyze
     try:
         file_path = await message.download()
+        # ✅ Convert sticker for detection
+        if message.sticker:
+            file_path = convert_sticker_to_jpg(file_path)
         asyncio.create_task(process_nsfw(client, message, file_path, chat_id, user))
     except:
         pass
