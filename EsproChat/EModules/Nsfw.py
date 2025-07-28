@@ -17,12 +17,12 @@ authorized_users.update(owner_ids)
 nsfw_enabled = defaultdict(lambda: True)
 user_spam_tracker = defaultdict(int)
 user_messages = defaultdict(list)
-last_alert_time = defaultdict(float)
 
+# ✅ HTTP session
 session = aiohttp.ClientSession()
 nekos_api = "https://nekos.best/api/v2/neko"
 
-# ✅ Get Random Neko Image
+# ✅ Fetch Neko Image
 async def get_neko_image():
     try:
         async with session.get(nekos_api, timeout=8) as r:
@@ -32,7 +32,7 @@ async def get_neko_image():
     except:
         return "https://nekos.best/api/v2/neko/0001.png"
 
-# ✅ Sightengine Check
+# ✅ Sightengine API check
 async def check_nsfw(file_path: str):
     url = "https://api.sightengine.com/1.0/check.json"
     try:
@@ -46,14 +46,13 @@ async def check_nsfw(file_path: str):
     except:
         return None
 
-# ✅ Delete All Messages from User
+# ✅ Delete all user's tracked messages
 async def delete_user_messages(client, chat_id, user_id):
     msgs = user_messages.get((chat_id, user_id), [])
     if msgs:
         try:
             await client.delete_messages(chat_id, msgs)
         except:
-            # Retry individually if bulk delete fails
             for m in msgs:
                 try:
                     await client.delete_messages(chat_id, m)
@@ -61,7 +60,16 @@ async def delete_user_messages(client, chat_id, user_id):
                     pass
     user_messages[(chat_id, user_id)].clear()
 
-# ✅ Process NSFW Check & Alert
+# ✅ Delete with retry
+async def safe_delete(client, chat_id, message_id, retries=3):
+    for _ in range(retries):
+        try:
+            await client.delete_messages(chat_id, message_id)
+            return
+        except:
+            await asyncio.sleep(0.3)
+
+# ✅ Process NSFW
 async def process_nsfw(client, message, file_path, chat_id, user):
     result = await check_nsfw(file_path)
     if os.path.exists(file_path):
@@ -70,7 +78,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
     if not result:
         return
 
-    # ✅ Scores
+    # Extract detection scores
     nudity = float(result.get("nudity", {}).get("raw", 0))
     partial = float(result.get("nudity", {}).get("partial", 0))
     sexual = float(result.get("nudity", {}).get("sexual_activity", 0))
@@ -83,39 +91,33 @@ async def process_nsfw(client, message, file_path, chat_id, user):
     if combined_score > 0.3 or weapon > 0.7 or drugs > 0.6:
         user_spam_tracker[user.id] += 1
 
-        # ✅ Auto Delete all user messages after 3 strikes
+        # Bulk delete on repeated spam
         if user_spam_tracker[user.id] >= 3:
             await delete_user_messages(client, chat_id, user.id)
 
-        # ✅ Show alert every time (per chat, no hard flood control)
+        # Send alert every time
         neko_img = await get_neko_image()
         caption = (
-            f"🚫 **NSFW Content Removed**\n"
+            f"🚫 **NSFW Content Removed**\n\n"
             f"👤 {user.mention}\n"
             f"🆔 `{user.id}` | Warnings: `{user_spam_tracker[user.id]}`\n\n"
-            f"**Scores:**\n"
-            f"Nudity: `{nudity*100:.1f}%` | Partial: `{partial*100:.1f}%`\n"
-            f"Sexual: `{sexual*100:.1f}%` | Offensive: `{offensive*100:.1f}%`"
+            f"**Detection:**\n"
+            f"Nudity: `{nudity*100:.1f}%`\n"
+            f"Partial: `{partial*100:.1f}%`\n"
+            f"Sexual: `{sexual*100:.1f}%`\n"
+            f"Offensive: `{offensive*100:.1f}%`"
         )
 
-        await message.reply_photo(
-            neko_img,
+        await client.send_photo(
+            chat_id=chat_id,
+            photo=neko_img,
             caption=caption,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("➕ Add Me", url=f"https://t.me/{client.me.username}?startgroup=true")]]
             )
         )
 
-# ✅ Force Delete with Retry
-async def safe_delete(client, chat_id, message_id, retries=3):
-    for _ in range(retries):
-        try:
-            await client.delete_messages(chat_id, message_id)
-            return
-        except:
-            await asyncio.sleep(0.3)
-
-# ✅ Main Detector - Instant Delete + Background Scan
+# ✅ Main detector
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker | filters.document))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
@@ -127,15 +129,15 @@ async def nsfw_guard(client, message: Message):
     if not nsfw_enabled[chat_id]:
         return
 
-    # ✅ Track messages for later bulk delete
+    # Track for bulk delete
     user_messages[(chat_id, user.id)].append(message.id)
     if len(user_messages[(chat_id, user.id)]) > 50:
         user_messages[(chat_id, user.id)].pop(0)
 
-    # ✅ Delete immediately
+    # Instant delete
     await safe_delete(client, chat_id, message.id)
 
-    # ✅ Download & analyze in background
+    # Download and scan asynchronously
     try:
         file_path = await message.download()
         asyncio.create_task(process_nsfw(client, message, file_path, chat_id, user))
@@ -160,7 +162,7 @@ async def toggle_nsfw(client, message: Message):
     else:
         await message.reply("❌ Invalid command. Use `/nsfw on` or `/nsfw off`.")
 
-# ✅ Authorize / Unauthorize Users
+# ✅ Authorize / Unauthorize users
 @app.on_message(filters.command("authorize") & filters.user(owner_ids))
 async def authorize_user(client, message: Message):
     user_id = None
