@@ -105,16 +105,22 @@ async def process_nsfw(client, message, file_path, chat_id, user):
             neko_img = await get_neko_image()
             
             # Fixed f-string syntax
+            nudity_score = float(result.get("nudity", {}).get("raw", 0)) * 100
+            partial_score = float(result.get("nudity", {}).get("partial", 0)) * 100
+            weapon_score = float(result.get("weapon", 0)) * 100
+            drugs_score = float(result.get("drugs", 0)) * 100
+            gore_score = float(result.get("gore", {}).get("prob", 0)) * 100
+            
             caption = (
-                f"🚨 **Content Removed - Policy Violation**\n\n"
+                "🚨 **Content Removed - Policy Violation**\n\n"
                 f"👤 User: {user.mention}\n"
                 f"🆔 `{user.id}` | Total Violations: {user_spam_tracker[user.id]}\n\n"
-                f"**Detection Scores:**\n"
-                f"• Nudity: {float(result.get('nudity', {}).get('raw', 0)*100:.1f}%\n"
-                f"• Partial Nudity: {float(result.get('nudity', {}).get('partial', 0)*100:.1f}%\n"
-                f"• Weapons: {float(result.get('weapon', 0)*100:.1f}%\n"
-                f"• Drugs: {float(result.get('drugs', 0)*100:.1f}%\n"
-                f"• Gore/Violence: {float(result.get('gore', {}).get('prob', 0)*100:.1f}%"
+                "**Detection Scores:**\n"
+                f"• Nudity: {nudity_score:.1f}%\n"
+                f"• Partial Nudity: {partial_score:.1f}%\n"
+                f"• Weapons: {weapon_score:.1f}%\n"
+                f"• Drugs: {drugs_score:.1f}%\n"
+                f"• Gore/Violence: {gore_score:.1f}%"
             )
 
             try:
@@ -143,7 +149,6 @@ async def nsfw_guard(client, message: Message):
     if not nsfw_enabled[message.chat.id]:
         return
     
-    # Skip static stickers
     if message.sticker and not (message.sticker.is_video or message.sticker.is_animated):
         return
     
@@ -199,5 +204,4 @@ async def authorize_user(client, message: Message):
 async def cleanup():
     await session.close()
 
-# Start the bot
 app.run()
