@@ -2,6 +2,7 @@ import aiohttp
 import asyncio
 import os
 from PIL import Image
+import subprocess
 from collections import defaultdict
 from EsproChat import app
 from pyrogram import filters, enums
@@ -45,14 +46,24 @@ async def check_nsfw(file_path: str):
     except:
         return None
 
-# ✅ Convert Sticker to JPG for Detection
-def convert_sticker_to_jpg(file_path):
+# ✅ Convert Sticker or Video Frame to JPG
+def convert_to_jpg(file_path):
     try:
-        new_path = file_path.replace(".webp", ".jpg")
-        img = Image.open(file_path).convert("RGB")
-        img.save(new_path, "JPEG")
-        os.remove(file_path)
-        return new_path
+        if file_path.endswith(".webp"):
+            # Static Sticker
+            new_path = file_path.replace(".webp", ".jpg")
+            img = Image.open(file_path).convert("RGB")
+            img.save(new_path, "JPEG")
+            os.remove(file_path)
+            return new_path
+        elif file_path.endswith(".tgs") or file_path.endswith(".webm"):
+            # Animated or Video Sticker → Extract 1st frame
+            new_path = file_path + ".jpg"
+            cmd = f'ffmpeg -y -i "{file_path}" -vf "select=eq(n\\,0)" -q:v 3 "{new_path}"'
+            subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.remove(file_path)
+            return new_path if os.path.exists(new_path) else file_path
+        return file_path
     except:
         return file_path
 
@@ -91,19 +102,25 @@ async def process_nsfw(client, message, file_path, chat_id, user):
         except:
             pass
 
-        # Auto clean after 3 strikes
-        if user_spam_tracker[user.id] >= 3:
-            for m in user_messages[(chat_id, user.id)]:
-                try:
-                    await client.delete_messages(chat_id, m)
-                except:
-                    pass
-            user_messages[(chat_id, user.id)].clear()
+        # Delete ALL previous messages if spam
+        if len(user_messages[(chat_id, user.id)]) > 1:
+            try:
+                await client.delete_messages(chat_id, user_messages[(chat_id, user.id)])
+            except:
+                pass
+            user_messages[(chat_id, user.id)] = []
+
+        # Auto-ban after 5 warnings
+        if user_spam_tracker[user.id] >= 5:
+            try:
+                await client.kick_chat_member(chat_id, user.id)
+            except:
+                pass
 
         # ✅ Send alert EVERY time after delete
         neko_img = await get_neko_image()
         caption = (
-            f"🚫 **NSFW Content Removed**\n"
+            f"🚫 **NSFW/Illegal Content Removed**\n"
             f"👤 {user.mention}\n"
             f"🆔 `{user.id}` | Warnings: `{user_spam_tracker[user.id]}`\n\n"
             f"**Detection Scores:**\n"
@@ -121,7 +138,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
             ),
         )
 
-# ✅ Main Handler for All Media (including stickers)
+# ✅ Main Handler for All Media
 @app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker | filters.document))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
@@ -136,9 +153,7 @@ async def nsfw_guard(client, message: Message):
 
     try:
         file_path = await message.download()
-        # ✅ Convert sticker for detection
-        if message.sticker:
-            file_path = convert_sticker_to_jpg(file_path)
+        file_path = convert_to_jpg(file_path)  # Handle sticker/video frame conversion
         asyncio.create_task(process_nsfw(client, message, file_path, chat_id, user))
     except:
         pass
