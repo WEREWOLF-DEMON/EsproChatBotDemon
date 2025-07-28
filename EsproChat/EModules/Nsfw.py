@@ -8,12 +8,12 @@ from pyrogram import filters, enums
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from config import OWNER_ID, SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET, AUTH_USERS
 
-# ✅ OWNER & AUTH
+# ✅ Owner & Auth
 owner_ids = [int(x) for x in OWNER_ID] if isinstance(OWNER_ID, list) else [int(OWNER_ID)]
-authorized_users = set(AUTH_USERS)
+authorized_users = set(int(x) for x in AUTH_USERS)
 authorized_users.update(owner_ids)
 
-# ✅ NSFW State
+# ✅ State
 nsfw_enabled = defaultdict(lambda: True)
 user_spam_tracker = defaultdict(int)
 user_messages = defaultdict(list)
@@ -53,6 +53,7 @@ async def delete_user_messages(client, chat_id, user_id):
         try:
             await client.delete_messages(chat_id, msgs)
         except:
+            # Retry individually if bulk delete fails
             for m in msgs:
                 try:
                     await client.delete_messages(chat_id, m)
@@ -60,7 +61,7 @@ async def delete_user_messages(client, chat_id, user_id):
                     pass
     user_messages[(chat_id, user_id)].clear()
 
-# ✅ Process NSFW after deletion
+# ✅ Process NSFW Check & Alert
 async def process_nsfw(client, message, file_path, chat_id, user):
     result = await check_nsfw(file_path)
     if os.path.exists(file_path):
@@ -69,6 +70,7 @@ async def process_nsfw(client, message, file_path, chat_id, user):
     if not result:
         return
 
+    # ✅ Scores
     nudity = float(result.get("nudity", {}).get("raw", 0))
     partial = float(result.get("nudity", {}).get("partial", 0))
     sexual = float(result.get("nudity", {}).get("sexual_activity", 0))
@@ -78,20 +80,19 @@ async def process_nsfw(client, message, file_path, chat_id, user):
 
     combined_score = (nudity + partial + sexual + offensive) / 4
 
-    if combined_score > 0.35 or weapon > 0.7 or drugs > 0.6:
+    if combined_score > 0.3 or weapon > 0.7 or drugs > 0.6:
         user_spam_tracker[user.id] += 1
-        await delete_user_messages(client, chat_id, user.id)
 
-        now = time.time()
-        if now - last_alert_time[user.id] < 20:
-            return
-        last_alert_time[user.id] = now
+        # ✅ Auto Delete all user messages after 3 strikes
+        if user_spam_tracker[user.id] >= 3:
+            await delete_user_messages(client, chat_id, user.id)
 
+        # ✅ Show alert every time (per chat, no hard flood control)
         neko_img = await get_neko_image()
         caption = (
-            f"🚫 **NSFW Content Removed**\n\n"
-            f"👤 User: {user.mention}\n"
-            f"🆔 `{user.id}` | Spam Count: {user_spam_tracker[user.id]}\n\n"
+            f"🚫 **NSFW Content Removed**\n"
+            f"👤 {user.mention}\n"
+            f"🆔 `{user.id}` | Warnings: `{user_spam_tracker[user.id]}`\n\n"
             f"**Scores:**\n"
             f"Nudity: `{nudity*100:.1f}%` | Partial: `{partial*100:.1f}%`\n"
             f"Sexual: `{sexual*100:.1f}%` | Offensive: `{offensive*100:.1f}%`"
@@ -105,8 +106,17 @@ async def process_nsfw(client, message, file_path, chat_id, user):
             )
         )
 
-# ✅ Main Detector - Instant Delete
-@app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker))
+# ✅ Force Delete with Retry
+async def safe_delete(client, chat_id, message_id, retries=3):
+    for _ in range(retries):
+        try:
+            await client.delete_messages(chat_id, message_id)
+            return
+        except:
+            await asyncio.sleep(0.3)
+
+# ✅ Main Detector - Instant Delete + Background Scan
+@app.on_message(filters.group & (filters.photo | filters.video | filters.animation | filters.sticker | filters.document))
 async def nsfw_guard(client, message: Message):
     chat_id = message.chat.id
     user = message.from_user
@@ -116,19 +126,14 @@ async def nsfw_guard(client, message: Message):
         return
     if not nsfw_enabled[chat_id]:
         return
-    if message.sticker and not (message.sticker.is_video or message.sticker.is_animated):
-        return
 
-    # ✅ Track message
+    # ✅ Track messages for later bulk delete
     user_messages[(chat_id, user.id)].append(message.id)
     if len(user_messages[(chat_id, user.id)]) > 50:
         user_messages[(chat_id, user.id)].pop(0)
 
-    # ✅ Instant delete before checking
-    try:
-        await client.delete_messages(chat_id, message.id)
-    except:
-        pass
+    # ✅ Delete immediately
+    await safe_delete(client, chat_id, message.id)
 
     # ✅ Download & analyze in background
     try:
