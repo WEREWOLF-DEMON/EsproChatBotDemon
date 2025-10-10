@@ -8,6 +8,7 @@ from pymongo import MongoClient
 import datetime
 import re
 import os
+from EsproChat import app
 from config import MONGO_URL, OWNER_ID, API_ID, API_HASH, BOT_TOKEN
 
 # MongoDB Setup
